@@ -1,0 +1,97 @@
+\documentclass[a4paper,11pt]{article} 
+
+\usepackage{booktabs}
+\usepackage[english]{babel} 
+\usepackage[utf8]{inputenc} 
+\usepackage[section]{placeins}
+\usepackage[T1]{fontenc} 
+\usepackage{mathtools} 
+\usepackage[table,xcdraw]{xcolor}
+\usepackage{siunitx} 
+\usepackage{float} 
+\usepackage{graphicx} 
+\usepackage[justification=centering]{caption} 
+\usepackage{subcaption}
+\usepackage{wallpaper}
+\usepackage{nomencl}
+\usepackage{fancyhdr}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+\usepackage[left=3cm,right=3cm,top=3cm,bottom=5cm]{geometry}
+\usepackage{multirow}
+\usepackage{geometry}
+\usepackage{amsmath}
+\usepackage[some]{background}
+\usepackage{titlesec}
+\usepackage{etoolbox}
+\usepackage{longtable}
+\usepackage{pdflscape}
+\usepackage{longtable}
+\usepackage{colortbl}
+
+\definecolor{titlepagecolor}{cmyk}{1,.60,0,.40}
+
+
+\backgroundsetup{
+    scale=1,
+    angle=0,
+    opacity=1,
+    contents={\begin{tikzpicture}[remember picture,overlay]
+    \path [fill=titlepagecolor] (current page.west)rectangle (current page.north east); 
+    \draw [color=white, very thick] (5,0)--(5,0.5\paperheight);
+    \end{tikzpicture}}
+}
+
+\makeatletter                   
+\def\printauthor{%                  
+    {\large \@author}}          
+\makeatother
+
+\author{%
+    Léo-Nils Boissier \\
+    \url{github.com/leonils}
+}
+
+\input{common/section_numbering}
+
+\begin{document}
+
+\input{common/title_page}
+
+\tableofcontents
+\newpage
+
+% ---------------------------------------------------------------------------- %
+%                                1) iteration 0                                %
+% ---------------------------------------------------------------------------- %
+
+\part{Exploratory iteration}
+\input{iteration_01/01_context}
+\input{iteration_01/02_use_cases}
+\input{iteration_01/03_scope}
+\input{iteration_01/04_requirements}
+\input{iteration_01/05_functions}
+\input{iteration_01/06_architecture}
+
+\newpage
+\part{Life cycle iteration}
+\input{iteration_02/01_lifecycle}
+\input{iteration_02/02_use_cases}
+\input{iteration_02/03_sequences}
+\input{iteration_02/04_requirements}
+\input{iteration_02/05_component_choice}
+\input{iteration_02/06_lfs_server}
+\input{iteration_02/07_requirements_table}
+
+\section{Conclusion}
+Further modeling will take place as this project move forward, but this document presented the start of the conception process of the system.
+
+Next steps would be:
+
+\begin{itemize}
+    \item To get some feedback about the achieved requirements
+    \item To push further the behavior views (mainly activity/sequence diagrams) to further specify and document the logic behind the object and locks api.
+    \item To implement
+\end{itemize}
+
+\end{document}

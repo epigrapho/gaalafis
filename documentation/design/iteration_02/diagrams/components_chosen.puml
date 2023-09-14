@@ -1,0 +1,103 @@
+@startuml components_chosen_1
+
+component system {
+    portin "22" as i22
+    portin "80" as i80
+
+    component git_container <<container>> {
+        portin 22
+
+        component sshd #LightGreen
+        component "Git server" as git #LightGreen
+        component "Auth wrapper" as gitolite
+        component "git-lfs-authenticate\ncommand\nexecutable" as git_lfs_authenticate
+    }
+
+    component "lfs-info-server container" <<container>>  {
+        portin 8081
+
+        component "lfs-info-server" as lfs_info_server
+    }
+
+    component "db-lfs container" <<container>> {
+        portin 5432
+
+        database "postgres" as postgres #LightGreen
+    }
+
+    component "bucket" <<container>> {
+        portin 9000
+        portin 9001
+
+        cloud "minio" as minio #LightGreen
+    }
+
+    component "nginx" #LightGreen {
+        portin "80" as p80
+        portout "80" as o80
+    }
+}
+
+actor "git-lfs client" as git_lfs_client
+
+git_lfs_client --> i22
+git_lfs_client --> i80
+
+i80 --> p80
+
+i22 --> 22
+o80 --> 8081
+
+22 --> sshd
+sshd -> gitolite
+gitolite -> git
+gitolite --> git_lfs_authenticate
+
+8081 --> lfs_info_server
+
+lfs_info_server --> 5432
+lfs_info_server --> 9000
+
+5432 --> postgres
+9000 --> minio
+9001 --> minio
+
+@enduml
+
+@startuml components_chosen_2
+
+component system {
+    portin "2222" as i2222
+
+    component backup_storage
+    component backup_utility
+    component logs_access
+    component configuration as sys_config
+    component sshd #LightGreen
+
+    component container <<container>> #LightGreen {
+        portin "*" as blank
+
+        component logs
+        component configuration
+    }
+}
+
+actor "system administrator" as admin
+component deployment_system
+
+admin --> i2222
+
+i2222 --> sshd
+sys_config <- sshd
+sshd --> blank
+sshd -> logs_access
+
+deployment_system --> system
+logs_access --> logs
+backup_utility --> container
+backup_utility --> backup_storage
+sshd --> backup_utility
+
+@enduml
+

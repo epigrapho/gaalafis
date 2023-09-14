@@ -1,0 +1,27 @@
+@startwbs functions
+
+<style>
+node {
+    Padding 12
+    ' MaximumWidth 120
+}
+</style>
+
+
+* Provide an autenticated server to the git-lfs client
+** F1. Expose api
+*** F1.1. Handle SSH connexions
+*** F1.2. Accept git commands
+*** F1.3. Serve git-lfs apis
+*** F1.4. Serve large objects
+*** F1.5. Handle admin SSH connexions
+
+** F8. Manage the system
+*** F8.1. Deploy the system
+*** F8.2. Monitor the system
+*** F8.3. Update the system
+*** F8.4. Backup the system
+*** F8.5. Restore the system
+*** F8.6. Configure the system
+
+@endwbs
