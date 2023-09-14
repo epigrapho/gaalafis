@@ -1,0 +1,25 @@
+\section{Introduction}
+
+\subsection{Context}
+
+\paragraph{Git} is a distributed version control system widely used in software development. It might be used in a fully decentralized way, but often a central server is used to synchronize the different repositories.
+
+\paragraph{Authorization and Authentication} To answer organizational needs, the central server might need to be authenticated and authorized. This is the case for example when the server is used to store proprietary code, or when the contributors have to adhere to a code of conduct and be approved by a central authority.
+
+\paragraph{Git-lfs} is an extension to git that allows to store large files in a separate storage location. It is often used to store binary files such as images, videos, or compiled code.
+
+\subsection{What is this project about}
+
+\subsubsection{The original use case}
+
+This project journey was first motivated by the desire to self-host some of my projects on my own server, and automate a few processes on the top of this. I quickly realized that I would need two features that are not native to git : lfs support and authentication. That would require a few components to be assembled together, and I thought it would be a good opportunity to apply the methods and techniques learned during my software engineering program at CentralSupélec engineering school. So after a few hours of technical exploration, I decided to go by the book and start with a system analysis.
+
+\subsubsection{As a starting point}
+
+As of now, the need is not well defined, but key ideas are: 
+
+\begin{itemize}
+    \item We want to setup a server with git, git-lfs, authentication and authorization features. 
+    \item It shall be reproducible, and might server as a starting point to anyone that would like to setup a similar system, with slightly different requirements. 
+    \item It shall be reusable: if any custom component is developed, it should be possible to use them in different architectures
+\end{itemize}

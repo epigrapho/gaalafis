@@ -1,0 +1,31 @@
+@startuml use_cases
+
+title Use Case Diagram
+
+left to right direction
+
+actor Developer
+actor Administrator
+actor UnauthorizedUser
+
+rectangle System {
+    usecase "Create a new repository" as UC1
+    usecase "Add a user" as UC2
+    usecase "Add a user to a repository" as UC3
+
+    usecase "Run git commands in repository via SSH" as UC4
+    usecase "Get/Send large files in repository" as UC5
+
+    usecase "Be blocked" as UC6
+}
+
+Administrator --> UC1
+Administrator --> UC2
+Administrator --> UC3
+
+Developer --> UC4
+Developer --> UC5
+
+UC6 <-- UnauthorizedUser
+
+@enduml

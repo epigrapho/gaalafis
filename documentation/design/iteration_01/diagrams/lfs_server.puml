@@ -1,0 +1,117 @@
+@startuml lfs_server_all_enabled
+
+allow_mixing
+hide empty members
+
+title Interfaces exposed by the Git LFS server, when locks and proxy are enabled
+
+component "Git lfs info server" as lfs_server {
+    portin "locks api" as portin_locks
+    portin "objects/batch api" as portin_objects_batch
+    portin "file api" as portin_files
+
+    component objects_batch_api
+    component file_api
+    component locks_api
+
+    interface FileStorageMetaRequester {
+        + get_meta(repo, oid)
+    }
+
+    interface FileStorageProxy {
+        + download(repo, oid)
+        + upload(repo, oid, File)
+    }
+
+    interface FileStorageLinkSigner {
+        + sign_download(repo, oid)
+        + sign_upload(repo, oid)
+        + verify(link)
+    }
+
+    interface LocksProvider {
+        + get_locks(repo)
+        + get_lock(repo, path)
+        + lock(repo, path, lock)
+        + unlock(repo, path, lock)
+    }
+
+    portin_objects_batch ..> objects_batch_api
+    portin_files ..> file_api
+    portin_locks ..> locks_api
+
+    objects_batch_api ..> FileStorageMetaRequester: <<use>>
+    objects_batch_api ..> FileStorageLinkSigner: <<use>>
+    file_api ..> FileStorageProxy: <<use>>
+    file_api ..> FileStorageLinkSigner: <<use>>
+    locks_api ..> LocksProvider: <<use>>
+}
+
+class MinioFileStorage implements FileStorageMetaRequester, FileStorageProxy, FileStorageLinkSigner {
+    + get_meta(repo, oid)
+    + download(repo, oid)
+    + upload(repo, oid, File)
+    + sign_download(repo, oid)
+    + sign_upload(repo, oid)
+    + verify(link)
+}
+
+class PostgresLocksProvider implements LocksProvider {
+    + get_locks(repo)
+    + get_lock(repo, path)
+    + lock(repo, path, lock)
+    + unlock(repo, path, lock)
+}
+
+database Minio
+
+MinioFileStorage ..> portin_files: <<sign links to>>
+MinioFileStorage ..> Minio: <<access>>
+
+@enduml
+
+@startuml lfs_server_minimal
+
+allow_mixing
+hide empty members
+
+title Interfaces exposed by the Git LFS server, when locks and proxy are disabled
+
+component "Git lfs info server" as lfs_server {
+    portin "locks api" as portin_locks
+    portin "objects/batch api" as portin_objects_batch
+    portin "file api" as portin_files
+
+    component objects_batch_api
+    component file_api
+    component locks_api
+
+    interface FileStorageMetaRequester {
+        + get_meta(repo, oid)
+    }
+
+    interface FileStorageLinkSigner {
+        + sign_download(repo, oid)
+        + sign_upload(repo, oid)
+        + verify(link)
+    }
+
+    portin_objects_batch ..> objects_batch_api
+    portin_files ..x file_api
+    portin_locks ..x locks_api
+
+    objects_batch_api ..> FileStorageMetaRequester: <<use>>
+    objects_batch_api ..> FileStorageLinkSigner: <<use>>
+}
+
+class MinioFileStorage implements FileStorageMetaRequester, FileStorageLinkSigner {
+    + get_meta(repo, oid)
+    + sign_download(repo, oid)
+    + sign_upload(repo, oid)
+}
+
+database Minio
+
+MinioFileStorage ..> Minio: <<sign links to>>
+
+@enduml

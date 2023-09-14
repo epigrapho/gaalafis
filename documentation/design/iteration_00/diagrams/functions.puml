@@ -1,0 +1,298 @@
+@startwbs functions
+
+<style>
+node {
+    Padding 12
+    MaximumWidth 80
+}
+</style>
+
+
+* Provide an autenticated server to the git-lfs client
+** F1. \nExpose api
+*** F1.1. \nHandle SSH connexions
+*** F1.2. \nAccept git commands
+*** F1.3. \nServe git-lfs apis
+*** F1.4. \nServe large objects
+
+** F2. \nProtect git
+*** F2.1. \nAuthenticate user
+*** F2.2. \nAuthorize user to access repo
+**** F2.2.1. \nAuthorize user to read repo
+**** F2.2.2. \nAuthorize user to write repo
+*** F2.1. \nGenerate stateless proof of access
+
+** F3. \nExecute git commands
+
+** F4. \nHandle locks
+*** F4.1. \nCreate lock
+*** F4.2. \nList locks
+*** F4.3. \nList locks for verfication
+*** F4.4. \nDelete lock
+
+** F5. \nProtect LFS api
+*** F5.1. \nVerify Proof of access
+*** F5.2. \nGenerate download/upload signed links
+*** F5.3. \nVerify signed links
+
+** F6. \nStore large objects
+*** F6.1. \nVerify object existence
+*** F6.2. \nReceive object
+*** F6.3. \nSend object
+
+** F7. \nAdminister repository and users
+*** F7.1. \nUpdate repositories
+*** F7.2. \nUpdate users
+*** F7.3. \nAffect users to repositories
+
+@endwbs
+
+@startuml detailed_flow
+
+!include <archimate/Archimate>
+
+' Elements
+
+Grouping(f1, "Expose api") {
+    Business_Function(f11, "F1.1. Handle SSH connexions")
+    Business_Function(f12, "F1.2. Accept git commands")
+    Business_Function(f14, "F1.4. Serve large objects")
+    Business_Function(f13, "F1.3. Serve git-lfs apis")
+}
+
+Grouping(f2, "Protect git") {
+    Business_Function(f21, "F2.1. Authenticate user")
+    Business_Function(f22, "F2.2. Authorize user to access repo")
+    Business_Function(f221, "F2.2.1. Authorize user to read repo")
+    Business_Function(f222, "F2.2.2. Authorize user to write repo")
+    Business_Function(f23, "F2.3. Generate stateless proof of access")
+}
+
+    Business_Function(f3, "F.3. Execute git commands")
+
+Grouping(f4, "Handle locks") {
+    Business_Function(f41, "F4.1. Create lock")
+    Business_Function(f42, "F4.2. List locks")
+    Business_Function(f43, "F4.3. List locks for verfication")
+    Business_Function(f44, "F4.4. Delete lock")
+}
+
+Grouping(f5, "Protect LFS api") {
+    Business_Function(f51, "F5.1. Verify Proof of access")
+    Business_Function(f52, "F5.2. Generate download/upload signed links")
+    Business_Function(f53, "F5.3. Verify signed links")
+}
+
+Grouping(f6, "Store large objects") {
+    Business_Function(f61, "F6.1. Verify object existence")
+    Business_Function(f62, "F6.2. Upload object")
+    Business_Function(f63, "F6.3. Download object")
+}
+
+actor client as "developer"
+
+Rel_Flow(client, f11, "ssh connexion,\ngit command")
+Rel_Flow(f11, f12, "ssh pub key,\ngit command")
+Rel_Flow_Left(f12, f21, "ssh pub key,\ngit command")
+Rel_Flow(f21, f22, "user, repo,\ngit command")
+Rel_Flow_Up(f22, f23, "repo,\ngit-lfs-authenticate")
+Rel_Flow_Right(f23, f11, "proof of access\n(POA)")
+Rel_Flow(f11, client, "POA")
+
+Rel_Realization_Up(f221, f22)
+Rel_Realization_Up(f222, f22)
+
+Rel_Flow_Down(client, f14, "signed link,\nobject?")
+
+Rel_Flow_Down(client, f13, "git-lfs\ncommands,\nPOA")
+Rel_Flow_Down(f13, f51, "POA")
+Rel_Flow_Right(f51, f52, "POA")
+Rel_Flow_Up(f52, f13, "signed link,\nobject?")
+Rel_Flow_Up(f13, client, "signed link")
+
+Rel_Flow_Down(f14, f53, "signed link,\nobject?")
+Rel_Flow_Up(f53, f14, "object?")
+
+Rel_Flow_Down(f51, f4, "command")
+Rel_Flow_Down(f52, f61, "path")
+Rel_Flow_Up(f61, f52, "exists")
+
+Rel_Flow_Down(f53, f62, "path,\nobject")
+Rel_Flow_Down(f53, f63, "path")
+Rel_Flow_Up(f63, f53, "object")
+
+Rel_Flow_Down(f22, f3, "git\ncommand")
+Rel_Flow_Up(f3, f11, "git\nresponse")
+Rel_Flow_Up(f11, client, "git\nresponse")
+
+@enduml
+
+@startuml overwiew_flow
+
+skinparam nodesep 100
+skinparam ranksep 100
+
+!include <archimate/Archimate>
+
+' Elements
+
+Business_Function(f1, "F1. Expose api")
+
+Business_Function(f2, "F2. Protect git")
+
+Business_Function(f3, "F3. Execute git commands")
+
+Business_Function(f4, "F4. Handle locks")
+
+Business_Function(f5, "F5. Protect LFS api")
+
+Business_Function(f6, "F6. Store large objects")
+
+actor client as "developer"
+
+Rel_Flow_Down(client, f1, "connexion,\ngit command\nPOA?\nsigned link?\nobject?")
+Rel_Flow_Up(f1, client, "response")
+
+Rel_Flow_Left(f1, f2, "ssh pub key,\ngit command")
+Rel_Flow_Right(f2, f1, "proof of access\n(POA)")
+
+Rel_Flow_Down(f1, f5, "request, POA/signed link")
+Rel_Flow_Down(f5, f1, "response")
+
+
+Rel_Flow_Down(f5, f4, "command")
+Rel_Flow_Up(f4, f1, "response")
+Rel_Flow_Up(f6, f5, "exists")
+
+Rel_Flow_Down(f5, f6, "path,\nobject?")
+Rel_Flow_Up(f6, f5, "object")
+
+Rel_Flow_Down(f2, f3, "git\ncommand")
+Rel_Flow_Up(f3, f1, "\nresponse")
+
+@enduml
+
+
+@startuml simple_git_flow
+
+!include <archimate/Archimate>
+
+' Elements
+
+Grouping(f1, "Expose api") {
+    Business_Function(f11, "F1.1. Handle SSH connexions")
+    Business_Function(f12, "F1.2. Accept git commands")
+}
+
+Grouping(f2, "Protect git") {
+    Business_Function(f21, "F2.1. Authenticate user")
+    Business_Function(f22, "F2.2. Authorize user to access repo")
+    Business_Function(f221, "F2.2.1. Authorize user to read repo")
+    Business_Function(f222, "F2.2.2. Authorize user to write repo")
+}
+
+Business_Function(f3, "F3. Execute git commands")
+
+
+actor client as "developer"
+
+Rel_Flow(client, f11, "ssh connexion,\ngit command")
+Rel_Flow(f11, f12, "ssh pub key,\ngit command")
+Rel_Flow_Down(f12, f21, "ssh pub key,\ngit command")
+Rel_Flow(f21, f22, "user, repo,\ngit command")
+
+Rel_Flow_Left(f22, f3, "git\ncommand")
+Rel_Flow_Left(f3, f11, "git\nresponse")
+Rel_Flow_Up(f11, client, "git\nresponse")
+
+Rel_Realization_Up(f221, f22)
+Rel_Realization_Up(f222, f22)
+
+@enduml
+
+@startuml POA_flow
+
+!include <archimate/Archimate>
+
+' Elements
+
+Grouping(f1, "Expose api") {
+    Business_Function(f11, "F1.1. Handle SSH connexions")
+    Business_Function(f12, "F1.2. Accept git commands")
+}
+
+Grouping(f2, "Protect git") {
+    Business_Function(f21, "F2.1. Authenticate user")
+    Business_Function(f22, "F2.2. Authorize user to access repo")
+    Business_Function(f221, "F2.2.1. Authorize user to read repo")
+    Business_Function(f222, "F2.2.2. Authorize user to write repo")
+    Business_Function(f23, "F2.3. Generate stateless proof of access")
+}
+
+actor client as "developer"
+
+Rel_Flow_Down(client, f11, "ssh connexion,\ngit-lfs-authenticate")
+Rel_Flow(f11, f12, "ssh pub key,\ngit-lfs-authenticate")
+Rel_Flow_Down(f12, f21, "ssh pub key,\ngit-lfs-authenticate")
+Rel_Flow(f21, f22, "user, repo,\ngit-lfs-authenticate")
+Rel_Flow_Up(f22, f23, "repo,\ngit-lfs-authenticate")
+Rel_Flow_Up(f23, f11, "proof of access\n(POA)")
+Rel_Flow_Up(f11, client, "POA")
+
+Rel_Realization_Up(f221, f22)
+Rel_Realization_Up(f222, f22)
+
+@enduml
+
+@startuml signed_link_flow
+
+!include <archimate/Archimate>
+
+' Elements
+
+Grouping(f1, "Expose api") {
+    Business_Function(f14, "F1.4. Serve large objects")
+    Business_Function(f13, "F1.3. Serve git-lfs apis")
+}
+
+Grouping(f4, "Handle locks") {
+    Business_Function(f41, "F4.1. Create lock")
+    Business_Function(f42, "F4.2. List locks")
+    Business_Function(f43, "F4.3. List locks for verfication")
+    Business_Function(f44, "F4.4. Delete lock")
+}
+
+Grouping(f5, "Protect LFS api") {
+    Business_Function(f51, "F5.1. Verify Proof of access")
+    Business_Function(f52, "F5.2. Generate download/upload signed links")
+    Business_Function(f53, "F5.3. Verify signed links")
+}
+
+Grouping(f6, "Store large objects") {
+    Business_Function(f61, "F6.1. Verify object existence")
+    Business_Function(f62, "F6.2. Upload object")
+    Business_Function(f63, "F6.3. Download object")
+}
+
+actor client as "developer"
+
+Rel_Flow_Down(client, f14, "signed link,\nobject?")
+Rel_Flow_Down(client, f13, "git-lfs\ncommands,\nPOA")
+Rel_Flow_Up(f13, client, "signed link")
+
+Rel_Flow_Down(f13, f51, "POA")
+Rel_Flow_Down(f51, f52, "POA")
+Rel_Flow_Up(f52, f13, "signed link,\nobject?")
+
+Rel_Flow_Down(f14, f53, "signed link,\nobject?")
+Rel_Flow_Up(f53, f14, "object?")
+
+Rel_Flow_Right(f51, f4, "command")
+Rel_Flow_Down(f52, f61, "path")
+Rel_Flow_Up(f61, f52, "exists")
+
+Rel_Flow_Down(f53, f62, "path,\nobject")
+Rel_Flow_Down(f53, f63, "path")
+Rel_Flow_Up(f63, f53, "object")
+
+@enduml

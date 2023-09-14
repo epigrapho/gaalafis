@@ -1,0 +1,38 @@
+@startuml context
+
+left to right direction
+
+package environment {
+    package system {
+        portin "authorized\nports" as in
+
+        component "SSH server" as ssh
+        component "Reverse proxy" as proxy
+        component "Git server" as gitserver
+        component "Authentication wrapper" as authwrapper
+        component "Authorization configuration" as authconfig
+        component "Git-lfs server" as lfs
+        component "Storage server" as storage
+        component "Git-lfs-authenticate command" as lfsauth
+    }
+    
+    actor "Developer" as developer
+    actor "Administrator" as admin
+
+    package "Git client" as gitclient
+}
+
+developer -> gitclient
+gitclient --> in
+in --> ssh
+ssh --> authwrapper
+authwrapper --> authconfig
+authwrapper --> gitserver
+authwrapper --> lfsauth
+
+admin -> authconfig
+in --> proxy
+proxy --> lfs
+lfs -> storage
+
+@enduml
