@@ -1,0 +1,95 @@
+@startuml gitolite_installation_verification
+
+title Gitolite Installation
+
+actor tester
+participant "Gitolite container" as gitolite
+
+== 1. Create new repo ==
+
+tester -> tester: configure git (user, default branch)
+tester -> gitolite: git clone git@gitolite:gitolite-admin
+gitolite --> tester: <<repository>> gitolite-admin
+note over tester: verify the repo structure & content of conf/gitolite.conf
+
+tester -> tester: add new repo "test-repo" to conf/gitolite.conf
+tester -> tester: git add, commit
+tester -> gitolite: git push
+
+== 3. clone new repo ==
+
+tester -> gitolite: git clone git@gitolite:test-repo
+gitolite --> tester: <<repository>> test-repo
+tester -> tester: create file.txt, add, commmit
+note over tester: verify branch is main
+tester -> gitolite: git push
+
+== 4. re-clone new repo ==
+tester -> gitolite: git clone git@gitolite:test-repo test-repo-2 
+gitolite --> tester: <<repository>> test-repo
+note over tester: verify file.txt exists
+note over tester: verify branch is main
+
+@enduml
+
+@startuml gitolite_lfs_authenticate
+
+title git-lfs-authenticate gitolite command implementation
+
+actor tester
+participant "Gitolite container" as gitolite
+
+tester -> gitolite: ssh git@gitolite git-lfs-authenticate testing upload
+gitolite --> tester: {href: ..., header: {Authorization: ...}, expires_in: 1800}
+note over tester: verify content of response
+
+@enduml
+
+@startuml lfs_server_access
+
+title lfs server access
+
+actor tester
+participant "Nginx container" as nginx
+participant "LFS container" as server
+participant "Minio container" as minio
+
+== 1. request to upload ==
+
+tester -> nginx: POST http://lfs.nginx/testing/objects/batch
+nginx --> server: POST http://server:8082/objects/batch?repo=testing
+server --> minio: ...
+minio --> server: ...
+server --> nginx: 200 OK, { ... }
+nginx --> tester: 200 OK, { ... }
+note over tester: verify content of response
+
+== 2. manual upload using returned url ==
+
+tester -> nginx: PUT url-to-upload?signature=...
+nginx --> minio: PUT url-to-upload?signature=...
+minio --> nginx: 200 OK
+nginx --> tester: 200 OK
+note over tester: verify content of response
+
+== 3. request to download ==
+
+tester -> nginx: POST http://lfs.nginx/testing/objects/batch
+nginx --> server: POST http://server:8082/objects/batch?repo=testing
+server --> minio: ...
+minio --> server: ...
+server --> nginx: 200 OK, { ... }
+nginx --> tester: 200 OK, { ... }
+
+== 4. manual download using returned url ==
+
+tester -> nginx: GET url-to-download?signature=...
+nginx --> minio: GET url-to-download?signature=...
+minio --> nginx: 200 OK
+nginx --> tester: 200 OK
+note over tester: verify content of the file matches the uploaded file
+
+
+@enduml
+
+

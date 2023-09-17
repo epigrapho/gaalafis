@@ -1,0 +1,21 @@
+services:
+  gitolite:
+    image: gaalafis:gitolite
+    environment:
+      SSH_KEY_FILE: /run/secrets/admin-tester.pub
+      SSH_KEY_NAME: admin-tester
+    secrets:
+      - admin-tester.pub
+  
+  tester_client: 
+    image: gaalafis:tester_client
+    depends_on:
+      - gitolite
+    volumes:
+      - ../tests:/root/tests
+      - ../runner/ssh:/root/.ssh
+    command: tail -f /dev/null
+
+secrets:
+  admin-tester.pub:
+    file: ../runner/ssh/id_rsa.pub

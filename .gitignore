@@ -24,3 +24,7 @@ Cargo.lock
 *.synctex.gz
 *.fls
 *.fdb_latexmk
+
+# SSH keys
+tests/runner/ssh/*
+!tests/runner/ssh/.gitkeep

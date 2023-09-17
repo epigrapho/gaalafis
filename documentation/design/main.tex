@@ -14,8 +14,7 @@
 \usepackage{subcaption}
 \usepackage{wallpaper}
 \usepackage{nomencl}
-\usepackage{fancyhdr}
-\usepackage{url}
+\usepackage{fancyhdr}\usepackage{xurl}
 \usepackage[hidelinks]{hyperref}
 \usepackage[left=3cm,right=3cm,top=3cm,bottom=5cm]{geometry}
 \usepackage{multirow}
@@ -28,6 +27,8 @@
 \usepackage{pdflscape}
 \usepackage{longtable}
 \usepackage{colortbl}
+\usepackage{listings}
+\usepackage{wrapfig}
 
 \definecolor{titlepagecolor}{cmyk}{1,.60,0,.40}
 
@@ -83,6 +84,12 @@
 \input{iteration_02/06_lfs_server}
 \input{iteration_02/07_requirements_table}
 
+\newpage
+\part{Prototyping iteration}
+\input{iteration_03/01_test_cases}
+
+\newpage
+\part{Conclusion}
 \section{Conclusion}
 Further modeling will take place as this project move forward, but this document presented the start of the conception process of the system.
 
