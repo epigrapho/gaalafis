@@ -55,7 +55,14 @@ if ! grep -q 'POST_CREATE => \[' /var/lib/git/.gitolite.rc; then
     sed -i '/ENABLE =>/i \    POST_CREATE => [ '\''set-head.sh'\'' ],' /var/lib/git/.gitolite.rc
 fi
 
+# Add the command git-lfs-authenticate if it doesn't exist
+if ! grep -q 'git-lfs-authenticate' /var/lib/git/.gitolite.rc; then
+    sed -i '/ENABLE =>/s/\[/\[ "git-lfs-authenticate", /' /var/lib/git/.gitolite.rc
+fi
+
 # Copy the implementation files
 cp '/set-head.sh' '/var/lib/git/local/triggers/set-head.sh'
+cp '/git-lfs-authenticate' '/var/lib/git/local/commands/git-lfs-authenticate'
+cp '/.env' '/var/lib/git/local/commands/.env'
 
 exec "$@"

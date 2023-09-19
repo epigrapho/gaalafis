@@ -6,6 +6,7 @@ services:
       SSH_KEY_NAME: admin-tester
     secrets:
       - admin-tester.pub
+      - jwt_secret
   
   tester_client: 
     image: gaalafis:tester_client
@@ -19,3 +20,5 @@ services:
 secrets:
   admin-tester.pub:
     file: ../runner/ssh/id_rsa.pub
+  jwt_secret:
+    file: ./secrets/jwt_secret

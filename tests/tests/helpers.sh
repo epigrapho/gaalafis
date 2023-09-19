@@ -43,6 +43,17 @@ run_with_3_retries() {
     fi
 }
 
+expect_to_fail() {
+    header "Expect to fail: $@"
+    run_with_format "$@"
+    s=$?
+    if [ $s -eq 0 ]; then
+        echo "    > FAIL: command should have failed but succeeded"
+        exit 1
+    fi
+    echo "[ok] failed as expected"
+}
+
 expect_file_to_contains() {
     if [ ! -f "$1" ]; then
         header "Expect file $1 to contains '$2'"
