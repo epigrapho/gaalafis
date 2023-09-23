@@ -1,7 +1,7 @@
 FROM ubuntu:22.04
 
 # install git
-RUN apt-get update && apt-get install -y git
+RUN apt-get update && apt-get install -y git curl
 
 WORKDIR /root
 

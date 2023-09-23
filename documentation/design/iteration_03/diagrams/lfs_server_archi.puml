@@ -1,0 +1,228 @@
+@startuml batch_api_structure
+
+hide empty members
+
+package api {
+    package repo_query {
+        struct RepositoryQuery {
+            +repo
+        }
+    }
+
+    package objects_batch {
+        package request {
+            struct ObjectIdentity {
+                +oid
+                +size
+            }
+
+            struct Ref {
+                +name
+            }
+
+            struct ObjectsBatchRequest {
+                -hash_algo
+                -transfer
+                +assert_transfer_accepted(transfer, accept_none)
+                +assert_hash_algo(algo)
+            }
+
+            ObjectsBatchRequest *- ObjectIdentity: objects
+            ObjectsBatchRequest *- Ref: ref?
+            ObjectIdentity -[hidden]- Ref
+        }
+
+
+        package response {
+            struct ObjectsBatchSuccessResponse {
+                +{static}basic_sha256(objects): ObjectsBatchSuccessResponse
+            }
+
+            struct Object {
+                -{static}success(oid, size, actions)
+                +{static}not_found(oid, size)
+                +{static}upload(oid, size, upload, verify?)
+                +{static}download(oid, size, download)
+                +{static}error(oid, size, error)
+            }
+
+            struct ObjectWithAvailableActions {
+                +oid
+                +size
+            }
+
+            struct ObjectWithError {
+                +oid
+                +size
+            }
+
+            struct ObjectWithAvailableActions
+
+            struct ObjectActions
+
+            struct DownloadActions
+
+            struct UploadActions
+
+            struct ObjectAction {
+                +href
+                +expires_id
+            }
+
+            struct AuthorizationHeader {
+                +authorization
+            }
+
+            struct ObjectError {
+                +message
+            }
+
+
+            ObjectsBatchSuccessResponse *- Object
+            Object <|--- ObjectWithAvailableActions: <<union>>
+            Object <|-- ObjectWithError: <<union>>
+
+            ObjectWithAvailableActions *- ObjectActions
+            ObjectWithError *- ObjectError
+
+            ObjectActions <|-- DownloadActions: <<union>>
+            ObjectActions <|--- UploadActions: <<union>>
+
+            DownloadActions *- ObjectAction: download
+            UploadActions *- ObjectAction: upload
+            UploadActions *- ObjectAction: verify?  
+
+            ObjectAction *- AuthorizationHeader
+        }
+    }
+
+    package poa {
+        struct Jwt {
+            -claims
+            -{static}from_token(token)
+            +{static}from_headers(headers)
+            -{static} is_expired(claims)
+            +get_claim(key)
+        }
+
+        struct RepositoryProofOfAccess {
+            -repo
+            -operation
+            +{static}new(jwt)
+            +has_access()
+            +has_write_access()
+        }
+
+        RepositoryProofOfAccess .> Jwt: <<use>>
+    }
+
+    package enums {
+        enum Operation {
+            Download
+            Upload
+        }
+
+        enum Transfer {
+            Basic
+        }
+
+        enum HashAlgo {
+            Sha256
+        }
+    }
+
+    Operation --* ObjectsBatchRequest: operation
+    Transfer --* ObjectsBatchRequest: transfers
+    HashAlgo --* ObjectsBatchRequest: hash_algo
+    Transfer --* ObjectsBatchSuccessResponse: transfer
+    HashAlgo --* ObjectsBatchSuccessResponse: hash_algo
+    RepositoryProofOfAccess ..> Operation: <<use>>
+}
+
+@enduml
+
+
+@startuml services_injection 
+
+hide empty members
+
+rectangle lib <<crate>> #eef {
+    package traits {
+        package services {
+            interface Services<TFileStorageMetaRequester,\nTFileStorageLinkSigner,\nTTokenDecoder> << (T,orchid) trait >>  {
+                +{abstract}file_storage_meta_requester()
+                +{abstract}file_storage_link_signer()
+                +{abstract}token_decoder()
+            }
+        }
+
+        package token_decoder {
+            interface TokenDecoder << (T,orchid) trait >> {
+                +{abstract}decode_token(token)
+            }
+        }
+
+        package file_storage {
+            struct FileStorageMetaResult {
+                +repo
+                +oid
+                +size
+                +exists
+                +{static}not_found(repo, oid)
+                +{static}new(repo, oid, size)
+            }
+
+            interface FileStorageMetaRequester << (T,orchid) trait >> {
+                +{abstract}request_meta(repo, oid)
+            }
+
+            interface FileStorageLinkSigner << (T,orchid) trait >> {
+                +{abstract}get_presigned_link(result)
+                +{abstract}post_presigned_link(result, size)
+            }
+
+            FileStorageMetaResult <.. FileStorageMetaRequester: <<generate>>
+            FileStorageMetaResult <.. FileStorageLinkSigner: <<use>>
+        }
+    }
+
+    package "services" as s {
+        package minio {
+            package single_bucket_storage {
+                struct MinioSingleBucketStorage {
+                    -bucket
+                    +{static}new(bucket)
+                    +get_object_path(repo, oid)
+                }
+
+                FileStorageMetaRequester <|.. MinioSingleBucketStorage: <<impl>>
+                FileStorageLinkSigner <|.. MinioSingleBucketStorage: <<impl>>
+            }
+        }
+
+        package jwt_token_decoder {
+            struct JwtTokenDecoder {
+                -secret
+                +{static}new(secret)
+                +{static}from_env_var(key)
+                +{static}from_file_env_var(key)
+            }
+        }
+
+        TokenDecoder <|.. JwtTokenDecoder: <<impl>>
+    }
+}
+
+rectangle main <<crate>> #faa {
+    struct InjectedServices {
+        -load_env_var_from_file(key)
+        +new()
+    }
+
+    MinioSingleBucketStorage --* InjectedServices: fs
+    JwtTokenDecoder --* InjectedServices: token_decoder
+    Services <|.. InjectedServices: <<impl>>\n<<bind type>>\nTFileStorageMetaRequester=MinoSingleBucketStorage\nTFileStorageLinkSigner=MinioSingleBucketStorage\nTTokenDecoder=JwtTokenDecoder
+}
+
+
+@enduml

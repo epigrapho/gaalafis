@@ -27,6 +27,17 @@ run_with_header() {
     fi
 }
 
+run_with_header_capturing_outputs() {
+    header "$@"
+    eval "$@" 1>/tmp/tar_stdout 2>/tmp/tar_stderr
+    s=$?
+    stdout_var=$( cat /tmp/tar_stdout )
+    stderr_var=$( cat /tmp/tar_stderr )
+    if [ $s -ne 0 ]; then
+        exit $s
+    fi
+}
+
 run_with_3_retries() {
     for i in {1..3}; do
         header "$@, try $i/3"
@@ -75,4 +86,24 @@ expect_folder_to_exists() {
         exit 1
     fi
     ok "Expect folder $1 to exists"
+}
+
+expect_stdout_to_contain() {
+    if ! echo "$stdout_var" | egrep -q "$1"; then
+        header "Expect stdout to contains '$1'"
+        echo "    > FAIL: stdout does not contains $1"
+        echo "    > stdout: $stdout_var"
+        exit 1
+    fi
+    ok "Expect stdout to contains '$1'"
+}
+
+expect_stderr_to_contain() {
+    if ! echo "$stderr_var" | egrep -q "$1"; then
+        header "Expect stderr to contains '$1'"
+        echo "    > FAIL: stderr does not contains $1"
+        echo "    > stderr: $stderr_var"
+        exit 1
+    fi
+    ok "Expect stderr to contains '$1'"
 }

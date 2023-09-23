@@ -17,7 +17,7 @@ pub fn check_access(repo: &str, user: &str, access: &str) -> Result<(), Gitolite
 
     if !output.status.success() {
         return Err(GitoliteError::UnauthorizedError(
-            String::from_utf8(output.stdout).unwrap_or("Unknown".to_string()),
+            String::from_utf8(output.stderr).unwrap_or("Unknown".to_string()),
         ));
     }
 

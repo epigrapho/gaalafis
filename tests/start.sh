@@ -38,6 +38,14 @@ run_and_print() {
     return $s
 }
 
+get_logs() {
+    run_and_print "docker exec $1 cat $2" "[logs] try to get logs from $1:$2..."
+    get_logs_status=$?
+    if [[ $get_logs_status != 0 ]]; then 
+        echo -e "    \e[37m$ No log found (exit code is $get_logs_status)\e[0m"
+    fi
+}
+
 # start timer
 start=$(date +%s)
 
@@ -46,8 +54,11 @@ run_and_print "docker-compose -f architectures/default.docker-compose.yaml run t
 status=$?
 end_test=$(date +%s)
 
+# fetch log files
+get_logs "architectures_gitolite_1" "/var/lib/git/log/output.log"
+
 # cleanup
-run_and_print "docker-compose -f architectures/default.docker-compose.yaml down -v" "[down]"
+run_and_print "docker-compose -f architectures/default.docker-compose.yaml down -v -t 0" "[down]"
 end_down=$(date +%s)
 
 # print the result of the test case

@@ -75,10 +75,10 @@ impl Display for GitoliteError {
 impl CommandError {
     pub fn log(&self) -> String {
         match self {
-            CommandError::LoadConfigError(e) => format!("LoadConfigError: {e}"),
-            CommandError::LoadEnvError(e) => format!("LoadEnvError: {e}"),
-            CommandError::JwtSigningError(e) => format!("JwtSigningError: {e}"),
-            CommandError::UnauthorizedError(e) => format!("UnauthorizedError: {e}"),
+            CommandError::LoadConfigError(e) => format!("LoadConfigError: {}", e),
+            CommandError::LoadEnvError(e) => format!("LoadEnvError: {}", e),
+            CommandError::JwtSigningError(e) => format!("JwtSigningError: {}", e),
+            CommandError::UnauthorizedError(e) => format!("UnauthorizedError: {}", e),
             _ => format!("{}", self),
         }
     }
