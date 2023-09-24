@@ -28,3 +28,6 @@ Cargo.lock
 # SSH keys
 tests/runner/ssh/*
 !tests/runner/ssh/.gitkeep
+
+tests/architectures/nginx/ssl/*
+!tests/architectures/nginx/ssl/.gitkeep

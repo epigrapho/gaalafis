@@ -7,6 +7,13 @@ services:
     secrets:
       - admin-tester.pub
       - jwt_secret
+
+  proxy: 
+    image: gaalafis:nginx
+    depends_on:
+      - lfs
+    volumes:
+      - ./nginx/ssl:/etc/nginx/ssl
   
   lfs: 
     image: gaalafis:lfs-server
@@ -47,6 +54,7 @@ services:
     depends_on:
       - gitolite
       - lfs
+      - proxy
     volumes:
       - ../tests:/root/tests
       - ../runner/ssh:/root/.ssh
