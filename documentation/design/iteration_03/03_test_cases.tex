@@ -1,0 +1,48 @@
+\section{New test cases}
+
+\subsection{Test case 4: Proxy server}
+
+\subsubsection{Description}
+
+The client should be able to access the server through a reverse proxy server that rewrite urls to the server from "/<repo>/objects/batch" to "/objects/batch?repo=<repo>", and that handle HTTPS. 
+
+Repo names might be single-word, or contain slashes, so we must test that the servers handle both cases.
+
+\subsubsection{Architecture}
+
+The default architecture will be extended to include a reverse proxy server (nginx). 
+
+\subsubsection{Implementation}
+
+Expected artifacts are:
+
+\begin{itemize}
+    \item Updated docker-compose.yml with a new proxy service
+    \item The nginx configuration file
+    \item \textit{/tests/tests/04\_proxy\_server.sh}
+\end{itemize}
+
+\subsection{Test case 5 and 6: Link handling}
+
+\subsubsection{Description}
+
+Running test 3 with success lead to get links to download/upload files. Now it's time to test that these links are working.
+
+For now we assume that the links are signed directly to minio, that is to say that the client can access minio directly (or through the reverse proxy). This will be changed in the next iteration, and add other link handling strategies.
+
+Assert that both the access through the reverse proxy and the direct access to minio are working.
+
+\subsubsection{Architecture}
+
+The default architecture might need to be splited into two variations: one with the server returning direct links to minio, and one with the server returning links to the reverse proxy.
+
+\subsubsection{Implementation}
+
+Expected artifacts are:
+
+\begin{itemize}
+    \item New architectures
+    \item Updated server that can return links to minio or to the reverse proxy, with configurable strategy. Mutiple builds might be used, so the image \textit{gaalafis:lfs-server} will have to improved so we can choose the build to use when starting the architecture. (we might also build a lot of different images for each build configuration, but it might take a lot of space for tests to get all the images locally. We will definitely do that for the releases, but directly in the CI.)
+    \item \textit{/tests/tests/05\_minio\_direct\_access.sh}
+    \item \textit{/tests/tests/06\_minio\_proxy\_access.sh}
+\end{itemize}
