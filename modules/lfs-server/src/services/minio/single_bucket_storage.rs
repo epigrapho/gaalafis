@@ -14,20 +14,45 @@ use crate::{
 /* -------------------------------------------------------------------------- */
 
 pub struct MinioSingleBucketStorage {
-    bucket: Bucket,
+    bucket_direct_access: Bucket,
+    bucket_public_access: Bucket,
 }
 
 impl MinioSingleBucketStorage {
     pub fn new(
         bucket_name: String,
-        region: Region,
         credentials: Credentials,
+        direct_access_region: Region,
+        public_access_region: Option<Region>,
     ) -> MinioSingleBucketStorage {
         // we can't start the server without the bucket
-        let bucket: Bucket = Bucket::new(&bucket_name, region, credentials)
-            .unwrap()
-            .with_path_style();
-        MinioSingleBucketStorage { bucket }
+        let public_access_credentials = credentials.clone();
+        let bucket_direct_access: Bucket =
+            Bucket::new(&bucket_name, direct_access_region, credentials)
+                .unwrap()
+                .with_path_style();
+
+        match public_access_region {
+            Some(region) => {
+                let bucket_public_access: Bucket =
+                    Bucket::new(&bucket_name, region, public_access_credentials)
+                        .unwrap()
+                        .with_path_style();
+                Self::new_with_buckets(bucket_direct_access, Some(bucket_public_access))
+            }
+            None => Self::new_with_buckets(bucket_direct_access, None),
+        }
+    }
+
+    pub fn new_with_buckets(
+        bucket_direct_access: Bucket,
+        bucket_public_access: Option<Bucket>,
+    ) -> MinioSingleBucketStorage {
+        let bucket_public_access = bucket_public_access.unwrap_or(bucket_direct_access.clone());
+        MinioSingleBucketStorage {
+            bucket_direct_access,
+            bucket_public_access,
+        }
     }
 
     pub fn get_object_path(&self, repo: &str, oid: &str) -> String {
@@ -43,7 +68,7 @@ impl MinioSingleBucketStorage {
 impl FileStorageMetaRequester for MinioSingleBucketStorage {
     async fn get_meta_result<'a>(&self, repo: &'a str, oid: &'a str) -> FileStorageMetaResult<'a> {
         let s3_path = self.get_object_path(repo, oid);
-        let meta = self.bucket.head_object(s3_path).await;
+        let meta = self.bucket_direct_access.head_object(s3_path).await;
         let size = match meta {
             Ok(meta) => meta.0.content_length,
             Err(_e) => {
@@ -79,7 +104,7 @@ impl FileStorageLinkSigner for MinioSingleBucketStorage {
         _result: FileStorageMetaResult<'a>,
     ) -> Result<ObjectAction, Box<dyn std::error::Error>> {
         let s3_path = self.get_object_path(_result.repo, _result.oid);
-        let link = self.bucket.presign_get(s3_path, 3600, None)?;
+        let link = self.bucket_public_access.presign_get(s3_path, 3600, None)?;
         return Ok(ObjectAction::new(link, None, 3600));
     }
 
@@ -89,7 +114,7 @@ impl FileStorageLinkSigner for MinioSingleBucketStorage {
         _size: u32,
     ) -> Result<(ObjectAction, Option<ObjectAction>), Box<dyn std::error::Error>> {
         let s3_path = self.get_object_path(result.repo, result.oid);
-        let link = self.bucket.presign_put(s3_path, 3600, None)?;
+        let link = self.bucket_public_access.presign_put(s3_path, 3600, None)?;
         return Ok((ObjectAction::new(link, None, 3600), None));
     }
 }
@@ -102,18 +127,31 @@ impl FileStorageLinkSigner for MinioSingleBucketStorage {
 mod tests {
     use s3::{creds::Credentials, Region};
 
-    use crate::traits::file_storage::{FileStorageLinkSigner, FileStorageMetaResult, FileStorageMetaRequester};
+    use crate::traits::file_storage::{
+        FileStorageLinkSigner, FileStorageMetaRequester, FileStorageMetaResult,
+    };
 
     use super::MinioSingleBucketStorage;
 
     fn get_mock_storage() -> MinioSingleBucketStorage {
         let storage = MinioSingleBucketStorage::new(
             String::from("bucket"),
+            Credentials::new(
+                Some("minio_access_key"),
+                Some("minio_secret_key"),
+                None,
+                None,
+                None,
+            )
+            .unwrap(),
             Region::Custom {
                 region: String::from("test"),
                 endpoint: String::from("http://localhost:9000"),
             },
-            Credentials::new(Some("minio_access_key"), Some("minio_secret_key"), None, None, None).unwrap(),
+            Some(Region::Custom {
+                region: String::from("test"),
+                endpoint: String::from("https://storage"),
+            }),
         );
         return storage;
     }
@@ -141,7 +179,7 @@ mod tests {
         };
         let signed = aw!(get_mock_storage().get_presigned_link(result)).unwrap();
 
-        assert!(signed.href.starts_with("http://localhost:9000/bucket/repo/objects/oid?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=minio_access_key"));
+        assert!(signed.href.starts_with("https://storage/bucket/repo/objects/oid?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=minio_access_key"));
         assert!(signed.href.contains("&X-Amz-Expires=3600"));
         assert!(signed.href.contains("&X-Amz-SignedHeaders=host"));
         assert!(signed.href.contains("&X-Amz-Signature="));
@@ -160,7 +198,7 @@ mod tests {
         };
         let (upload, verify) = aw!(get_mock_storage().post_presigned_link(result, 30)).unwrap();
 
-        assert!(upload.href.starts_with("http://localhost:9000/bucket/repo/objects/oid?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=minio_access_key"));
+        assert!(upload.href.starts_with("https://storage/bucket/repo/objects/oid?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=minio_access_key"));
         assert!(upload.href.contains("&X-Amz-Expires=3600"));
         assert!(upload.href.contains("&X-Amz-SignedHeaders=host"));
         assert!(upload.href.contains("&X-Amz-Signature="));
@@ -173,7 +211,7 @@ mod tests {
     #[test]
     fn test_get_meta_success() {
         let meta = aw!(get_mock_storage().get_meta_result("repo", "test.txt"));
-        
+
         assert!(meta.exists);
         assert_eq!(meta.size, 5);
         assert_eq!(meta.oid, "test.txt");
@@ -183,7 +221,7 @@ mod tests {
     #[test]
     fn test_get_meta_not_found() {
         let meta = aw!(get_mock_storage().get_meta_result("repo", "test_not_found.txt"));
-        
+
         assert!(!meta.exists);
         assert_eq!(meta.size, 0);
         assert_eq!(meta.oid, "test_not_found.txt");

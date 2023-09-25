@@ -3,9 +3,6 @@
 bold=$(tput bold)
 normal=$(tput sgr0)
 
-# make it bold
-echo "${bold}Running test case $1${normal}"
-
 # get some stream in stdin, search for a prefix, and print the line with some formating 
 format_line() {
     while read line; do
@@ -46,36 +43,48 @@ get_logs() {
     fi
 }
 
-# start timer
-start=$(date +%s)
-
-# run the test case
-run_and_print "docker-compose -f architectures/default.docker-compose.yaml run tester_client bash /root/run_test.sh $1" "[up]"
-status=$?
-end_test=$(date +%s)
-
-# fetch log files
-get_logs "architectures_gitolite_1" "/var/lib/git/log/output.log"
-
-# cleanup
-run_and_print "docker-compose -f architectures/default.docker-compose.yaml down -v -t 0" "[down]"
-end_down=$(date +%s)
-
-# print the result of the test case
-if [ $status -eq 0 ]; then
+# get the architecture from json
+architecture=$(jq -r "to_entries[] | select(.value | contains([$1])) | .key" ./architectures.json)
+exit_code=0
+for architecture in $architecture; do
+    # title
     echo ""
-    echo "${bold}✅ test case $1: ${normal}"
-    echo "    > PASS"
-else
     echo ""
-    echo "${bold}❌ test case $1: ${normal}"
-    echo "    > FAIL with status $status"
-fi
+    echo "${bold}Running test case $1 on architecture $architecture ${normal}"
 
-# end timer and print the duration
-end=$(date +%s)
-echo "    > test took in $(($end_test-$start)) seconds"
-echo "    > cleanup took $(($end-$end_test)) seconds"
+    # start timer
+    start=$(date +%s)
 
-exit $status
+    # run the test case
+    run_and_print "docker-compose -f architectures/$architecture.docker-compose.yaml run tester_client bash /root/run_test.sh $1" "[up]"
+    status=$?
+    end_test=$(date +%s)
+
+    # fetch log files
+    get_logs "architectures_gitolite_1" "/var/lib/git/log/output.log"
+
+    # cleanup
+    run_and_print "docker-compose -f architectures/$architecture.docker-compose.yaml down -v -t 0" "[down]"
+    end_down=$(date +%s)
+
+    # print the result of the test case
+    if [ $status -eq 0 ]; then
+        echo ""
+        echo "${bold}✅ test case $1: ${normal}"
+        echo "    > PASS"
+    else
+        echo ""
+        echo "${bold}❌ test case $1: ${normal}"
+        echo "    > FAIL with status $status"
+        exit_code="$status"
+    fi
+
+    # end timer and print the duration
+    end=$(date +%s)
+    echo "    > test took in $(($end_test-$start)) seconds"
+    echo "    > cleanup took $(($end-$end_test)) seconds"
+done
+
+
+exit $exit_code
 
