@@ -45,8 +45,7 @@ impl FileStorageMetaRequester for MinioSingleBucketStorage {
         let s3_path = self.get_object_path(repo, oid);
         let meta = self.bucket.head_object(s3_path).await;
         let size = match meta {
-            Ok(meta        // Get metadata about the file
-) => meta.0.content_length,
+            Ok(meta) => meta.0.content_length,
             Err(_e) => {
                 return FileStorageMetaResult::not_found(repo, oid);
             }

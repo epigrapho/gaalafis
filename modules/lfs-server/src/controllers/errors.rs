@@ -85,19 +85,11 @@ pub async fn handle_and_filter_error_details<B>(
     };
 
     // print the error to the console
-    if status.is_server_error() {
-        tracing::error!(
-            status = ?status,
-            error = ?error_message,
-            "Internal server error",
-        );
-    } else if status.is_client_error() {
-        tracing::warn!(
-            status = ?status,
-            error = ?error_message,
-            "Client error",
-        );
-    }
+    tracing::error!(
+        status = ?status,
+        error = ?error_message,
+        "Internal server error",
+    );
 
     let error_builder = ErrorBuilder::new(&status, &inner_error_message);
 

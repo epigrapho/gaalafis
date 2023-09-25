@@ -29,6 +29,7 @@ run_with_header() {
 
 run_with_header_capturing_outputs() {
     header "$@"
+    rm -f /tmp/tar_stdout /tmp/tar_stderr
     eval "$@" 1>/tmp/tar_stdout 2>/tmp/tar_stderr
     s=$?
     stdout_var=$( cat /tmp/tar_stdout )

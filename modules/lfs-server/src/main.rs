@@ -5,7 +5,9 @@ use std::sync::Arc;
 
 use lfs_info_server::{
     controllers::{errors::handle_and_filter_error_details, objects::batch::post_objects_batch},
-    services::{minio::single_bucket_storage::MinioSingleBucketStorage, jwt_token_decoder::JwtTokenDecoder},
+    services::{
+        jwt_token_decoder::JwtTokenDecoder, minio::single_bucket_storage::MinioSingleBucketStorage,
+    },
     traits::services::Services,
 };
 
@@ -51,7 +53,7 @@ impl Services for InjectedServices {
     fn file_storage_meta_requester(&self) -> &Self::TFileStorageMetaRequester {
         &self.fs
     }
-    
+
     fn file_storage_link_signer(&self) -> &Self::TFileStorageLinkSigner {
         &self.fs
     }

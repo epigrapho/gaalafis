@@ -22,7 +22,7 @@ services:
       SBS_ACCESS_KEY_FILE: /run/secrets/sbs_access_key
       SBS_SECRET_KEY_FILE: /run/secrets/sbs_secret_key
       SBS_REGION: us-east-1
-      SBS_HOST: bucket
+      SBS_HOST: http://bucket:9000
       RUST_BACKTRACE: 1
       JWT_SECRET_FILE: /run/secrets/jwt_secret
     depends_on:
@@ -51,6 +51,7 @@ services:
 
   tester_client: 
     image: gaalafis:tester_client
+    command: tail -f /dev/null
     depends_on:
       - gitolite
       - lfs
