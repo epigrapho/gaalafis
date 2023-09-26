@@ -23,7 +23,7 @@ fn expect_between_3_and_4_parameters(args: &[String]) -> Result<(), CommandError
     Ok(())
 }
 
-fn get_safe_operation(operation: &str) -> Result<String, CommandError> {
+fn get_gitolite_operation(operation: &str) -> Result<String, CommandError> {
     match operation {
         "download" => Ok("R".to_string()),
         "upload" => Ok("W".to_string()),
@@ -39,12 +39,13 @@ fn _main() -> Result<String, CommandError> {
     let config = Config::load_config_file().map_err(CommandError::LoadConfigError)?;
 
     let repo = args[1].trim().to_string();
-    let operation = get_safe_operation(&args[2])?;
+    let jwt_operation = &args[2]; // download or upload
+    let gitolite_operation = get_gitolite_operation(&args[2])?; // R or W
     let user = std::env::var("GL_USER").map_err(CommandError::LoadEnvError)?;
 
-    check_access(&repo, &user, &operation).map_err(CommandError::UnauthorizedError)?;
+    check_access(&repo, &user, &gitolite_operation).map_err(CommandError::UnauthorizedError)?;
 
-    let token = JwtPayload::new(&repo, &user, &operation)
+    let token = JwtPayload::new(&repo, &user, jwt_operation)
         .sign(&config.jwt_secret, &config.expires_in)
         .map_err(CommandError::JwtSigningError)?;
 

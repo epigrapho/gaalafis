@@ -81,7 +81,7 @@ for architecture in $architecture; do
 
     # end timer and print the duration
     end=$(date +%s)
-    echo "    > test took in $(($end_test-$start)) seconds"
+    echo "    > test took $(($end_test-$start)) seconds"
     echo "    > cleanup took $(($end-$end_test)) seconds"
 done
 
