@@ -4,13 +4,13 @@
 
 \subsubsection{Description}
 
-The client should be able to access the server through a reverse proxy server that rewrite urls to the server from "/<repo>/objects/batch" to "/objects/batch?repo=<repo>", and that handle HTTPS. 
+The client should be able to access the server through a reverse proxy server that rewrite urls to the server from "/<repo>/objects/batch" to "/objects/batch?repo=<repo>", and that handle HTTPS.
 
 Repo names might be single-word, or contain slashes, so we must test that the servers handle both cases.
 
 \subsubsection{Architecture}
 
-The default architecture will be extended to include a reverse proxy server (nginx). 
+The default architecture will be extended to include a reverse proxy server (nginx).
 
 \subsubsection{Implementation}
 
@@ -45,4 +45,41 @@ Expected artifacts are:
     \item Updated server that can return links to minio or to the reverse proxy, with configurable strategy. Mutiple builds might be used, so the image \textit{gaalafis:lfs-server} will have to improved so we can choose the build to use when starting the architecture. (we might also build a lot of different images for each build configuration, but it might take a lot of space for tests to get all the images locally. We will definitely do that for the releases, but directly in the CI.)
     \item \textit{/tests/tests/05\_minio\_direct\_access.sh}
     \item \textit{/tests/tests/06\_minio\_proxy\_access.sh}
+\end{itemize}
+
+\subsection{Test case 7: Integration}
+
+\subsection{Description}
+
+Clone, add binary files, commit, push and clone again using LFS. This test will assert for the first time that the whole system is working.
+
+\subsection{Architecture}
+
+We will use an architecture with the gitolite server, the proxy, the minio instance, and the LFS server. We will also need a client to run the tests.
+
+\subsubsection{Implementation}
+
+Expected artifacts are:
+
+\begin{itemize}
+    \item \textit{/tests/tests/07\_integration\_test.sh}
+    \item Updated implementation according to the test results
+\end{itemize}
+
+\subsection{Test case 8: Speed}
+
+\subsubsection{Description}
+
+Requirement 2.7 requires that push take less that 1 minute for 100 files of 1MB. Test case 7 will assert that this requirement is met.
+
+\subsubsection{Architecture}
+
+The test can be a simple variation of the test 6, with more files, and focus on speed instead of correctness of the transfer.
+
+\subsubsection{Implementation}
+
+Expected artifacts are:
+
+\begin{itemize}
+    \item \textit{/tests/tests/08\_speed\_test.sh}
 \end{itemize}
