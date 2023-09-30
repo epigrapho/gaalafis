@@ -1,15 +1,22 @@
-use axum::{middleware, routing::post, Router};
+use axum::{
+    middleware,
+    routing::{get, post, put},
+    Router,
+};
 use s3::{creds::Credentials, Region};
 use std::net::SocketAddr;
 use std::sync::Arc;
 
 use lfs_info_server::{
-    controllers::{errors::handle_and_filter_error_details, objects::batch::post_objects_batch},
+    controllers::{
+        errors::handle_and_filter_error_details,
+        objects::{batch::post_objects_batch, upload::upload_object, download::download_object},
+    },
     services::{
-        jwt_token_encoder_decoder::JwtTokenEncoderDecoder,
+        custom_link_signer::CustomLinkSigner, jwt_token_encoder_decoder::JwtTokenEncoderDecoder,
         minio::single_bucket_storage::MinioSingleBucketStorage,
     },
-    traits::{services::Services, file_storage::{FileStorageMetaRequester, FileStorageLinkSigner}, token_encoder_decoder::TokenEncoderDecoder},
+    traits::{file_storage::{FileStorageProxy, FileStorageMetaRequester, FileStorageLinkSigner}, services::Services, token_encoder_decoder::TokenEncoderDecoder},
 };
 
 /* -------------------------------------------------------------------------- */
@@ -19,6 +26,7 @@ use lfs_info_server::{
 pub struct InjectedServices {
     fs: MinioSingleBucketStorage,
     token_encoder_decoder: JwtTokenEncoderDecoder,
+    signer: CustomLinkSigner<JwtTokenEncoderDecoder>,
 }
 
 impl InjectedServices {
@@ -48,9 +56,25 @@ impl InjectedServices {
             _ => None,
         };
         let region = Region::from_env("SBS_REGION", Some("SBS_HOST")).unwrap();
+        let jwt_token_encoder_decoder =
+            JwtTokenEncoderDecoder::from_file_env_var("JWT_SECRET_FILE", "JWT_EXPIRES_IN");
+        let link_token_encoder_decoder = JwtTokenEncoderDecoder::from_file_env_var(
+            "CUSTOM_SIGNER_SECRET_FILE",
+            "CUSTOM_SIGNER_EXPIRES_IN",
+        );
+
         InjectedServices {
-            fs: MinioSingleBucketStorage::new(bucket_name, credentials, region, public_region),
-            token_encoder_decoder: JwtTokenEncoderDecoder::from_file_env_var("JWT_SECRET_FILE", "JWT_EXPIRES_IN"),
+            fs: MinioSingleBucketStorage::new(
+                bucket_name,
+                credentials,
+                region,
+                public_region,
+            ),
+            token_encoder_decoder: jwt_token_encoder_decoder,
+            signer: CustomLinkSigner::from_env_var(
+                "CUSTOM_SIGNER_HOST",
+                link_token_encoder_decoder,
+            ),
         }
     }
 }
@@ -61,11 +85,15 @@ impl Services for InjectedServices {
     }
 
     fn file_storage_link_signer(&self) -> &(dyn FileStorageLinkSigner + 'static) {
-        &self.fs
+        &self.signer
     }
 
     fn token_encoder_decoder(&self) -> &(dyn TokenEncoderDecoder + 'static) {
         &self.token_encoder_decoder
+    }
+
+    fn file_storage_proxy(&self) -> Option<&(dyn FileStorageProxy + 'static)> {
+        Some(&self.fs)
     }
 }
 
@@ -79,12 +107,16 @@ async fn main() {
     tracing_subscriber::fmt::init();
 
     // Bundle services
-    let services: Arc<dyn Services + Send + Sync> = Arc::new(InjectedServices::new());
+    let services: Arc<dyn Services + Send + Sync + 'static> = Arc::new(InjectedServices::new());
 
     // build our application with a route
     let app = Router::new()
         // `POST /objects/batch?repo=a/b/c`
         .route("/objects/batch", post(post_objects_batch))
+        // `PUT /objects/access/<oid>?repo=a/b/c`
+        .route("/objects/access/:oid", put(upload_object))
+        // `GET /objects/access/<oid>?repo=a/b/c`
+        .route("/objects/access/:oid", get(download_object))
         // Error handling
         .layer(middleware::from_fn(handle_and_filter_error_details))
         .with_state(services);

@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use serde::{Deserialize, Serialize};
 
 /// the way the object is hashed to create the oid
@@ -21,11 +23,20 @@ where
 
 /// The requested / actual operation
 /// If Upload is requested on an existing object, the server will specify that the operation is actually download.
-#[derive(Deserialize, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Debug)]
 #[serde(rename_all = "camelCase")]
 pub enum Operation {
     Download,
     Upload,
+}
+
+impl Display for Operation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Operation::Download => write!(f, "download"),
+            Operation::Upload => write!(f, "upload"),
+        }
+    }
 }
 
 /// The transfer type requested by the client

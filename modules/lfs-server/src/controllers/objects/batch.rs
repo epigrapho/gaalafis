@@ -6,18 +6,16 @@ use std::sync::Arc;
 
 use crate::{
     api::{
-        jwt::{Jwt,RepoTokenPayload},
-        enums::{Operation, HashAlgorithm, Transfer},
+        enums::{HashAlgorithm, Operation, Transfer},
+        jwt::RepoTokenPayload,
         objects_batch::{
             body::ObjectsBatchRequestPayload,
-            response::{ObjectsBatchSuccessResponse, Object},
+            response::{Object, ObjectsBatchSuccessResponse},
         },
         repo_query::QueryRepo,
     },
-    traits::{
-        file_storage::{FileStorageLinkSigner, FileStorageMetaRequester, FileStorageMetaResult},
-        services::Services,
-    },
+    services::jwt::Jwt,
+    traits::{file_storage::FileStorageMetaResult, services::Services},
 };
 
 // Request the ability to transfer a batch of objects
@@ -28,25 +26,25 @@ use crate::{
 pub async fn post_objects_batch(
     headers: HeaderMap,
     query: Query<QueryRepo>,
-    State(services): State<Arc<impl Services>>,
+    services: State<Arc<dyn Services + Send + Sync + 'static>>,
     Json(payload): Json<ObjectsBatchRequestPayload>,
 ) -> Result<Json<ObjectsBatchSuccessResponse>, (StatusCode, String)> {
     // 1) Extract and validate
-    let token_decoder = services.token_decoder();
-    let jwt = Jwt::from_headers(headers, token_decoder)?;
+    let token_decoder = services.token_encoder_decoder();
+    let jwt = Jwt::from_headers(&headers, token_decoder)?;
     let jwt_payload = RepoTokenPayload::new(&jwt)?;
-    
+
     payload.assert_jwt_access_level_higher_than_requested(&jwt_payload)?;
-    
+
     query.assert_repo_match_token(&jwt_payload)?;
-    
+
     payload.assert_hash_algo(HashAlgorithm::Sha256)?;
-    
+
     payload.assert_transfer_accepted(Transfer::Basic)?;
-    
+
     // 7) For each object, verify if it exists on storage server
     let services = Arc::clone(&services);
-    
+
     let repo = &query.repo;
     let number_of_objects = payload.objects.len();
     let mut objects: Vec<Object> = Vec::with_capacity(number_of_objects);
@@ -62,7 +60,7 @@ pub async fn post_objects_batch(
         let signer = services.file_storage_link_signer();
 
         let object = if exists {
-            let download =  signer.get_presigned_link(result).await;
+            let download = signer.get_presigned_link(result).await;
             match download {
                 Ok(download) => Object::download(oid, size, download),
                 Err(error) => Object::error(oid, size, error),
@@ -79,9 +77,9 @@ pub async fn post_objects_batch(
 
         objects.push(object);
     }
-    
+
     // 8) Return the result
     let response = ObjectsBatchSuccessResponse::basic_sha256(objects);
-    
+
     Ok(Json(response))
 }

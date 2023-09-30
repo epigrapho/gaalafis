@@ -1,11 +1,11 @@
-use super::{file_storage::{FileStorageMetaRequester, FileStorageLinkSigner}, token_decoder::TokenDecoder};
+use super::{file_storage::{FileStorageMetaRequester, FileStorageLinkSigner, FileStorageProxy}, token_encoder_decoder::TokenEncoderDecoder};
 
-pub trait Services {
-    type TFileStorageMetaRequester: FileStorageMetaRequester;
-    type TFileStorageLinkSigner: FileStorageLinkSigner;
-    type TTokenDecoder: TokenDecoder;
+pub trait Services : Send + Sync {
+    fn file_storage_meta_requester(&self) -> &(dyn FileStorageMetaRequester + 'static);
+    fn file_storage_link_signer(&self) -> &(dyn FileStorageLinkSigner + 'static);
+    fn token_encoder_decoder(&self) -> &(dyn TokenEncoderDecoder + 'static);
 
-    fn file_storage_meta_requester(&self) -> &Self::TFileStorageMetaRequester;
-    fn file_storage_link_signer(&self) -> &Self::TFileStorageLinkSigner;
-    fn token_decoder(&self) -> &Self::TTokenDecoder;
+    fn file_storage_proxy(&self) -> Option<&(dyn FileStorageProxy + 'static)> {
+        None
+    }
 }

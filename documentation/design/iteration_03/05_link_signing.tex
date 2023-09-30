@@ -1,0 +1,25 @@
+\newpage
+\section{Link signing}
+
+\paragraph{}
+As of now, we used direct access to minio, or access through an nginx proxy. However, we might want to have direct handing of links by the lfs sever, that will itself serve files. It will be especially useful when the storage backend is not minio. 
+
+\paragraph{}
+We will use the injection we already discuss to sign the link, and develop another trait to handle the file serving.
+
+\paragraph{}
+We will define more binary to represent the possible implementation. As we discussed, the dependency injection will allow for fine tuning the implementation we want. 
+
+
+\subsection{New test cases 9}
+
+\paragraph{}
+A test will be written to assert that the link signing is working. The test will be similar to the test 6, but with another architecture, and with links that are slightly different. We will also run the the test 7 (integration test) with this architecture. The test 7 will therefore be run 2 times. 
+
+\subsection{Implementation}
+
+\paragraph{}
+A few difficulties were encountered during the implementation of this feature. The main one is the dependency injection. If we use custom signing and serving, we need to inject and implementation in the server, but it is not always needed. So we need an optional dependency. The approach to define the dependencies was changed from generics to dynamic traits. This lead to a few issues with the safety of passing it through threads. 
+
+\paragraph{}
+Another refactor was to move the jwt logic to a service, and not an api definition. The JWT payload is an api, as it is the input of the server, signed from another component. It is a contract between the signer and the server. However, the implementation details of encoding and decoding JWTs are not part of the contract. It is an implementation detail of the signer. Therefore, it is not part of the api definition. This also allow for easier reuse of the JWT logic into the link signer.

@@ -30,7 +30,8 @@ run_with_header_capturing_outputs "curl -X POST 'http://$base_url' -v -H 'Author
 
 # Download the file and verify that it is the same
 href=$(echo "$stdout_var" | jq -r '.objects[0].actions.download.href')
-run_with_header_capturing_outputs "curl '$href' -v --insecure"
+token=$(echo "$stdout_var" | jq -r '.objects[0].actions.download.header.Authorization')
+run_with_header_capturing_outputs "curl '$href' -v --insecure -H 'Authorization: $token'"
 expect_stdout_to_contain 'test'
 expect_stderr_to_contain 'HTTP/1.1 200 OK'
 expect_stderr_to_contain 'Content-Length: 5'

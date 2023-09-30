@@ -60,8 +60,12 @@ for architecture in $architecture; do
     status=$?
     end_test=$(date +%s)
 
-    # fetch log files
-    get_logs "architectures_gitolite_1" "/var/lib/git/log/output.log"
+    # fetch log files if status is not 0
+    if [ $status -ne 0 ]; then
+        get_logs "architectures_gitolite_1" "/var/lib/git/log/output.log"
+        run_and_print "docker-compose -f architectures/$architecture.docker-compose.yaml logs" "[logs]"
+    fi
+
 
     # cleanup
     run_and_print "docker-compose -f architectures/$architecture.docker-compose.yaml down -v -t 0" "[down]"

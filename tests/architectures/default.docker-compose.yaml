@@ -25,6 +25,7 @@ services:
       SBS_HOST: http://bucket:9000
       RUST_BACKTRACE: 1
       JWT_SECRET_FILE: /run/secrets/jwt_secret
+      JWT_EXPIRES_IN: 3600
     depends_on:
       - bucket
     secrets:

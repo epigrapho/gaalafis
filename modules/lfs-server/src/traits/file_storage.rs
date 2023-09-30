@@ -1,6 +1,7 @@
 use async_trait::async_trait;
+use axum::http::HeaderMap;
 
-use crate::api::{enums::Operation,objects_batch::response::ObjectAction};
+use crate::api::{enums::Operation, objects_batch::response::ObjectAction};
 
 #[derive(Debug)]
 pub struct FileStorageMetaResult<'a> {
@@ -31,12 +32,12 @@ impl FileStorageMetaResult<'_> {
 }
 
 #[async_trait]
-pub trait FileStorageMetaRequester {
+pub trait FileStorageMetaRequester: Sync + Send {
     async fn get_meta_result<'a>(&self, repo: &'a str, oid: &'a str) -> FileStorageMetaResult<'a>;
 }
 
 #[async_trait]
-pub trait FileStorageLinkSigner {
+pub trait FileStorageLinkSigner: Sync + Send {
     async fn get_presigned_link<'a>(
         &self,
         result: FileStorageMetaResult<'a>,
@@ -46,11 +47,23 @@ pub trait FileStorageLinkSigner {
         result: FileStorageMetaResult<'a>,
         size: u32,
     ) -> Result<(ObjectAction, Option<ObjectAction>), Box<dyn std::error::Error>>;
+    async fn check_link(
+        &self,
+        repo: &str,
+        oid: &str,
+        header: Option<&HeaderMap>,
+        operation: Operation,
+    ) -> bool;
 }
 
 #[async_trait]
-pub trait FileStorageProxy {
-    async fn check_link(&self, link: &str, operation: Operation) -> bool;
-    async fn get(&self) -> Result<Vec<u8>, Box<dyn std::error::Error>>;
-    async fn post(&self, data: Vec<u8>) -> Result<(), Box<dyn std::error::Error>>;
+pub trait FileStorageProxy: Sync + Send {
+    async fn get(&self, repo: &str, oid: &str) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>>;
+    async fn post(
+        &self,
+        repo: &str,
+        oid: &str,
+        data: Vec<u8>,
+        content_type: &str,
+    ) -> Result<(), Box<dyn std::error::Error>>;
 }
