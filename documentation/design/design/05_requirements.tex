@@ -10,12 +10,9 @@ At the highest level, we can identify four main requirements:
 \begin{itemize}
     \item \textbf{R1}: The system shall implement git and git-lfs repositories over SSH.
     \item \textbf{R2}: The system shall be usable as a low-level foundation for commercial and non-commercial multi-users applications based around git repositories.
-    \item \textbf{R3}: The system shall be developed in 200 hours-man by the end of October 2023, and require at most 100 hours-man per year to be maintained by the community. 
+    \item \textbf{R3}: The system shall be developed stable, maintainable, and documented.
     \item \textbf{R4}: The system shall be deployable in less than 1h in an enterprise-grade environment.
 \end{itemize}
-
-\paragraph{}
-The first one comes from what we want the users to do. The second one and the fourth one come from the scope of the project and the intended use. The third one comes from my availability.
 
 \subsection{R1: git and git-lfs repositories over SSH.}
 
@@ -47,7 +44,7 @@ But to achieve this, the system must verify a strong set of constraints to be ex
     \item \textbf{R2.7}: Abstraction done of the network layer between the client and the system, the system shall handle an initial push of a 100MB of LFS as 100 large files in less than one minute.
 \end{itemize}
 
-\subsection{R3. developed in 200 hours-man by the end of October 2023; at most 100 hours-man per year to be maintained by the community. }
+\subsection{R3. Maintainability. }
 
 \paragraph{}
 From a personal perspective, I want to be able to develop the system in a reasonable amount of time, and then to have minimal needs for maintenance. To achieve this, the project must ensure correctness as much as possible, and to keep it simple. To achieve this, I will use the following requirements:
@@ -143,8 +140,3 @@ Deriving from \textbf{R3.2}, \textbf{R3.3}, and \textbf{R3.4}, the system shall 
     \item \textbf{R3.4.3}: The system shall be documented in term of deployment processes.
     \item \textbf{R3.4.4}: Custom code of the system shall be documented in term of technical choices and design.
 \end{itemize}
-
-
-
-
-% - _R6_ (_The system shall store LFS files in a separate storage location_) implemented by a MinIO instance, implies the server shall support the MinIO api to create/read files

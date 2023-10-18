@@ -3,7 +3,7 @@
 <style>
 node {
     Padding 12
-    MaximumWidth 80
+    MaximumWidth 140
 }
 </style>
 
@@ -14,6 +14,7 @@ node {
 *** F1.2. \nAccept git commands
 *** F1.3. \nServe git-lfs apis
 *** F1.4. \nServe large objects
+*** F1.5. \nHandle admin SSH connexions
 
 ** F2. \nProtect git
 *** F2.1. \nAuthenticate user
@@ -30,6 +31,21 @@ node {
 *** F4.3. \nList locks for verfication
 *** F4.4. \nDelete lock
 
+
+@endwbs
+
+@startwbs functions2
+
+<style>
+node {
+    Padding 12
+    MaximumWidth 140
+}
+</style>
+
+
+* Provide an autenticated server to the git-lfs client
+
 ** F5. \nProtect LFS api
 *** F5.1. \nVerify Proof of access
 *** F5.2. \nGenerate download/upload signed links
@@ -44,6 +60,15 @@ node {
 *** F7.1. \nUpdate repositories
 *** F7.2. \nUpdate users
 *** F7.3. \nAffect users to repositories
+
+** F8. \nManage the system
+*** F8.1. \nDeploy the system
+*** F8.2. \nMonitor the system
+*** F8.3. \nUpdate the system
+*** F8.4. \nBackup the system
+*** F8.5. \nRestore the system
+*** F8.6. \nConfigure the system
+
 
 @endwbs
 
@@ -198,15 +223,40 @@ actor client as "developer"
 
 Rel_Flow(client, f11, "ssh connexion,\ngit command")
 Rel_Flow(f11, f12, "ssh pub key,\ngit command")
-Rel_Flow_Down(f12, f21, "ssh pub key,\ngit command")
-Rel_Flow(f21, f22, "user, repo,\ngit command")
+Rel_Flow_Left(f12, f21, "ssh pub key,\ngit command")
+Rel_Flow_Up(f21, f22, "user, repo,\ngit command")
 
-Rel_Flow_Left(f22, f3, "git\ncommand")
-Rel_Flow_Left(f3, f11, "git\nresponse")
+Rel_Flow_Right(f22, f3, "git\ncommand")
+Rel_Flow_Down(f3, f11, "git\nresponse")
 Rel_Flow_Up(f11, client, "git\nresponse")
 
 Rel_Realization_Up(f221, f22)
 Rel_Realization_Up(f222, f22)
+
+@enduml
+
+@startuml simple_git_flow_sequence
+
+actor client as "developer"
+
+participant "F1.1" as f11
+participant "F1.2" as f12
+
+participant "F2.1" as f21
+participant "F2.2" as f22
+
+participant "F3" as f3
+
+
+client -> f11 : ssh connexion,\ngit command
+f11 -> f12 : ssh pub key, repo,\ngit command
+f12 -> f21 : ssh pub key, repo,\ngit command
+f21 --> f12 : user
+f12 -> f22 : user, repo,\ngit command
+f22 --> f12 : authorized
+f12 -> f3 : git\ncommand
+f3 --> client : git\nresponse
+
 
 @enduml
 
@@ -231,16 +281,41 @@ Grouping(f2, "Protect git") {
 
 actor client as "developer"
 
-Rel_Flow_Down(client, f11, "ssh connexion,\ngit-lfs-authenticate")
+Rel_Flow_Right(client, f11, "ssh connexion,\ngit-lfs-authenticate")
 Rel_Flow(f11, f12, "ssh pub key,\ngit-lfs-authenticate")
 Rel_Flow_Down(f12, f21, "ssh pub key,\ngit-lfs-authenticate")
-Rel_Flow(f21, f22, "user, repo,\ngit-lfs-authenticate")
+Rel_Flow_Right(f21, f22, "user, repo,\ngit-lfs-authenticate")
 Rel_Flow_Up(f22, f23, "repo,\ngit-lfs-authenticate")
-Rel_Flow_Up(f23, f11, "proof of access\n(POA)")
+Rel_Flow_Left(f23, f11, "proof of access\n(POA)")
 Rel_Flow_Up(f11, client, "POA")
 
 Rel_Realization_Up(f221, f22)
 Rel_Realization_Up(f222, f22)
+
+@enduml
+
+@startuml poa_flow_sequence
+
+actor client as "developer"
+
+participant "F1.1" as f11
+participant "F1.2" as f12
+
+participant "F2.1" as f21
+participant "F2.2" as f22
+
+participant "F2.3" as f23
+
+
+client -> f11 : ssh connexion,\ngit-lfs-authenticate operation
+f11 -> f12 : ssh pub key, repo,\ngit-lfs-authenticate operation
+f12 -> f21 : ssh pub key
+f21 --> f12 : user
+f12 -> f22 : user, repo,\ngit-lfs-authenticate operation
+f22 --> f12 : authorized
+f12 -> f23 : user, repo, operation
+f23 --> client : stateless proof of access
+
 
 @enduml
 
@@ -294,5 +369,75 @@ Rel_Flow_Up(f61, f52, "exists")
 Rel_Flow_Down(f53, f62, "path,\nobject")
 Rel_Flow_Down(f53, f63, "path")
 Rel_Flow_Up(f63, f53, "object")
+
+@enduml
+
+
+@startuml signed_link_flow_serve_seq
+
+
+actor client as "developer"
+
+participant "F1.3.\nServe\ngit-lfs apis" as f13
+
+participant "F5.1.\nVerify\nProof of access" as f51
+participant "F5.2.\nGenerate\ndownload/upload signed links" as f52
+
+participant "F1.4.\nServe\nlarge objects" as f14
+
+participant "F6.1.\nVerify\nobject existence" as f61
+participant "F5.3.\nVerify\nsigned links" as f53
+
+participant "F6.2.\nUpload\nobject" as f62
+participant "F6.3.\nDownload\nobject" as f63
+
+== Get link ==
+
+client -> f13: repo, git-lfs\ncommands,\nPOA
+f13 -> f51: POA
+f51 --> f13: OK
+f13 -> f52: command, repo, POA
+f52 -> f61: path
+f61 --> f52: exists
+f52 --> client: signed link
+
+== Download ==
+
+client -> f14: signed download link
+f14 -> f53: signed download link
+f53 --> f14: OK
+
+f53 -> f63: path
+f63 --> client: object
+
+== Upload ==
+
+client -> f14: signed upload link
+f14 -> f53: signed upload link
+f53 --> f14: OK
+
+f14 -> f62: path,\nobject
+f62 --> client: OK
+
+
+@enduml
+
+@startuml signed_link_flow_locks_seq
+
+
+actor client as "developer"
+
+participant "F1.3.\nServe git-lfs apis" as f13
+
+participant "F5.1.\nVerify Proof of access" as f51
+
+participant "F4.\nHandle locks" as f4
+
+client -> f13: git-lfs locks\ncommands,\nPOA
+f13 -> f51: POA
+f51 --> f13: OK
+
+f13 -> f4: command
+f4 --> client: response
 
 @enduml

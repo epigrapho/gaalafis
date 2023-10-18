@@ -1,3 +1,4 @@
+\newpage
 \section{Component Choice}
 
 \subsection{Largely used components}
@@ -31,13 +32,13 @@ At this point, if we go back to the components view, in green are colored the co
     \centering
     \begin{minipage}{.5\textwidth}
         \centering
-        \includegraphics[width=0.95\linewidth]{iteration_02/diagrams/components_chosen_1.png}
+        \includegraphics[width=0.95\linewidth]{design/diagrams/components_chosen_1.png}
         \caption{Components}
         \label{fig:components_chosen_1}
     \end{minipage}%
     \begin{minipage}{.5\textwidth}
         \centering
-        \includegraphics[width=0.95\linewidth]{iteration_02/diagrams/components_chosen_2.png}
+        \includegraphics[width=0.95\linewidth]{design/diagrams/components_chosen_2.png}
         \caption{Components}
         \label{fig:components_chosen_2}
     \end{minipage}
@@ -62,7 +63,7 @@ Gitolite would satisfy a lot of requirements:
     \item R2.1 and 2.4: Gitolite defines a repository "gitolite-admin" that contain all the public keys of users, and a list of repositories, with each user having read or write access to each of them. Changing permissions is a simple as modifying this file and pushing modification. 
     \item R2.5: gitolite is under the GPL v2 license, allowing for commercial use, modification and distribution. However it contaminates the code that uses it with the GPL license. Using it will therefore require good separations between this component and other components that might need to be modified by enterprises in a proprietary way.
     \item R2.6: gitolite is still very active (last commit was 2 months ago, there are 38 contributors, 8.2k stars on github, and 1k forks)
-    \item R3.2: the system is heavily used and tested, and might be considered very stable.
+    \item R3.1: the system is heavily used and tested, and might be considered very stable.
 \end{itemize}
 
 \paragraph{}

@@ -8,6 +8,10 @@
 
 \paragraph{Git-lfs} is an extension to git that allows to store large files in a separate storage location. It is often used to store binary files such as images, videos, or compiled code.
 
+\subsection{The git client}
+
+The system will be accessed from the git client, as defined for the pure git commands in the git documentation, and for the git-lfs commands in the git-lfs specification. No GUI will be provided by GAALAFIS.
+
 \subsection{What is this project about}
 
 \subsubsection{The original use case}
@@ -16,10 +20,10 @@ This project journey was first motivated by the desire to self-host some of my p
 
 \subsubsection{As a starting point}
 
-As of now, the need is not well defined, but key ideas are: 
+Key ideas are: 
 
 \begin{itemize}
     \item We want to setup a server with git, git-lfs, authentication and authorization features. 
-    \item It shall be reproducible, and might server as a starting point to anyone that would like to setup a similar system, with slightly different requirements. 
+    \item It shall be reproducible, and might server as a starting point to anyone that would like to setup a similar system, with slightly different requirements. It is not a complete product, but a solid ground to build upon.
     \item It shall be reusable: if any custom component is developed, it should be possible to use them in different architectures
 \end{itemize}

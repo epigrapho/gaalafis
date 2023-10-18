@@ -6,12 +6,13 @@ left to right direction
 
 actor Developer
 actor "Repo administrator" as repo_admin
+actor "System administrator" as admin
 actor UnauthorizedUser
 
 rectangle System {
     usecase "Create a new repository" as UC1
-    usecase "Add a user" as UC2
-    usecase "Add a user to a repository" as UC3
+    usecase "Add, remove, edit a user" as UC2
+    usecase "Add, remove a user to a repository\nwith write/read access" as UC3
 
     usecase "Run git commands in repository via SSH" as UC4
     usecase "Get/Send large files in repository" as UC5
@@ -21,11 +22,13 @@ rectangle System {
     usecase "Define maximum resources" as UC7
     usecase "Deploy" as UC8
     usecase "Maintain" as UC9
+    usecase "Define/Edit repo administrator" as UC10
+    usecase "Extend/Addapt the system" as UC11
 }
 
-Administrator --> UC1
-Administrator --> UC2
-Administrator --> UC3
+repo_admin --> UC1
+repo_admin --> UC2
+repo_admin --> UC3
 
 Developer --> UC4
 Developer --> UC5
@@ -36,9 +39,13 @@ UC4 -[hidden]- UC7
 UC5 -[hidden]- UC8
 UC1 -[hidden]- UC9
 UC2 -[hidden]- UC6
+UC3 -[hidden]- UC10
+UC3 -[hidden]- UC11
 
-UC7 <-- repo_admin
-UC8 <-- repo_admin
-UC9 <-- repo_admin
+UC7 <-- admin
+UC8 <-- admin
+UC9 <-- admin
+UC10 <-- admin
+UC11 <-- admin
 
 @enduml

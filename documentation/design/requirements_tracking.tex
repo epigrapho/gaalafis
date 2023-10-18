@@ -1,5 +1,61 @@
+\documentclass[a4paper,11pt]{article} 
 
-\newpage
+\usepackage{booktabs}
+\usepackage[english]{babel} 
+\usepackage[utf8]{inputenc} 
+\usepackage[section]{placeins}
+\usepackage[T1]{fontenc} 
+\usepackage{mathtools} 
+\usepackage[table,xcdraw]{xcolor}
+\usepackage{siunitx} 
+\usepackage{float} 
+\usepackage{graphicx} 
+\usepackage[justification=centering]{caption} 
+\usepackage{subcaption}
+\usepackage{wallpaper}
+\usepackage{nomencl}
+\usepackage{fancyhdr}\usepackage{xurl}
+\usepackage[hidelinks]{hyperref}
+\usepackage[left=3cm,right=3cm,top=3cm,bottom=3cm]{geometry}
+\usepackage{multirow}
+\usepackage{amsmath}
+\usepackage[some]{background}
+\usepackage{titlesec}
+\usepackage{etoolbox}
+\usepackage{longtable}
+\usepackage{pdflscape}
+\usepackage{longtable}
+\usepackage{colortbl}
+\usepackage{listings}
+\usepackage{wrapfig}
+
+\definecolor{titlepagecolor}{cmyk}{1,.60,0,.40}
+
+
+\backgroundsetup{
+    scale=1,
+    angle=0,
+    opacity=1,
+    contents={\begin{tikzpicture}[remember picture,overlay]
+    \path [fill=titlepagecolor] (current page.west)rectangle (current page.north east); 
+    \draw [color=white, very thick] (5,0)--(5,0.5\paperheight);
+    \end{tikzpicture}}
+}
+
+\makeatletter                   
+\def\printauthor{%                  
+    {\large \@author}}          
+\makeatother
+
+\author{%
+    Léo-Nils Boissier \\
+    \url{github.com/leonils}
+}
+
+\input{common/section_numbering}
+
+\begin{document}
+
 
 
 \newgeometry{margin=1cm}
@@ -7,9 +63,6 @@
     {
         \titleformat{\section}
         {\normalfont\Large\bfseries}{\llap{\parbox{0em}{\thesection\hfill}}}{3em}{}
-
-        \section{Requirements table}
-
     }
 
     \begin{longtable}{|p{1cm}|p{19cm}|p{2cm}|p{3cm}|}
@@ -50,20 +103,19 @@
         \rowcolor[HTML]{DDFFDD}        R2.5       & The system shall use compatible licences, and be loosely coupled enough so the licences of components do not contaminate each other.                                                                                                                                                  &                       &                                          \\ \hline
         \rowcolor[HTML]{DDFFDD}        R2.6       & The system shall not use deprecated components.                                                                                                                                                                                                                                       &                       &                                          \\ \hline
         \rowcolor[HTML]{DDFFDD}        R2.7       & Abstraction done of the network layer between the client and the system, the system shall handle an initial push of a 100MB of LFS as 100 large files in less than one minute.                                                                                                        &                       &                                          \\ \hline
-        \rowcolor[HTML]{C0C0C0}        R3         & The system shall be developed in 200 hours-man by the end of October 2023, and require at most 100 hours-man per year to be maintained by the community..                                                                                                                             &                       &                                          \\ \hline
-        \rowcolor[HTML]{FFDDDD}        R3.1       & A first implementation of the system shall be implemented by the end of September 2023                                                                                                                                                                                                &                       &                                          \\ \hline
-        \rowcolor[HTML]{DDFFDD}        R3.2       & The system shall ensure memory safety and functional correctness either by being heavily maintained by the community, by formal technics, or by automated testing.                                                                                                                    &                       &                                          \\ \hline
-        \rowcolor[HTML]{EEFFEE}        R3.2.1     & Custom parts of the system shall be implemented in the rust programming language.                                                                                                                                                                                                     &                       & git-lfs-authenticate command; lfs server \\\hline
-        \rowcolor[HTML]{EEFFEE}        R3.2.2     & Non custom parts of the system shall be heavily adopted by the community to be considered safe.                                                                                                                                                                                       &                       & gitolite, git, nginx, ...                \\\hline
-        \rowcolor[HTML]{EEFFEE}        R3.2.3     & Custom parts of the system shall be tested using automated testing, with a coverage of at least 90\%.                                                                                                                                                                                 &                       & git-lfs-authenticate command; lfs server \\\hline
-        \rowcolor[HTML]{DDFFDD}        R3.3       & Every custom code shall adhere to a common and well-recognized good practices handbook, to be chosen.                                                                                                                                                                                 &                       & git-lfs-authenticate command; lfs server \\ \hline
-        \rowcolor[HTML]{EEFFEE}        R3.3.1     & Custom apis of the system should adhere to the following good practices handbooks \url{https://rust-lang.github.io/api-guidelines/}, \url{https://cheats.rs/#idiomatic-rust} and \url{https://rust-unofficial.github.io/patterns/}                                                    &                       &                                          \\\hline
-        \rowcolor[HTML]{EEFFEE}        R3.3.2     & Custom code of the system shall use the linter \url{https://github.com/rust-lang/rust-clippy}                                                                                                                                                                                         &                       &                                          \\\hline
-        \rowcolor[HTML]{FFDDDD}        R3.4       & The system shall be documented focussing on: the system in its whole, the system components, maintenance processes.                                                                                                                                                                   &                       &                                          \\ \hline
-        \rowcolor[HTML]{FFEEEE}        R3.4.1     & Every custom and non-custom code of the system shall be documented in term of context and role in the system, and in term of possible replacements.                                                                                                                                   &                       &                                          \\\hline
-        \rowcolor[HTML]{FFEEEE}        R3.4.2     & The system shall be documented in term of architecture, and in term of maintenance processes.                                                                                                                                                                                         &                       &                                          \\\hline
-        \rowcolor[HTML]{FFEEEE}        R3.4.3     & The system shall be documented in term of deployment processes.                                                                                                                                                                                                                       &                       &                                          \\\hline
-        \rowcolor[HTML]{FFEEEE}        R3.4.4     & Custom code of the system shall be documented in term of technical choices and design.                                                                                                                                                                                                &                       &                                          \\\hline
+        \rowcolor[HTML]{C0C0C0}        R3         & The system shall be stable, maintainable, documented.                                                                                                                             &                       &                                          \\ \hline
+        \rowcolor[HTML]{DDFFDD}        R3.1       & The system shall ensure memory safety and functional correctness either by being heavily maintained by the community, by formal technics, or by automated testing.                                                                                                                    &                       &                                          \\ \hline
+        \rowcolor[HTML]{EEFFEE}        R3.1.1     & Custom parts of the system shall be implemented in the rust programming language.                                                                                                                                                                                                     &                       & git-lfs-authenticate command; lfs server \\\hline
+        \rowcolor[HTML]{EEFFEE}        R3.1.2     & Non custom parts of the system shall be heavily adopted by the community to be considered safe.                                                                                                                                                                                       &                       & gitolite, git, nginx, ...                \\\hline
+        \rowcolor[HTML]{EEFFEE}        R3.1.3     & Custom parts of the system shall be tested using automated testing, with a coverage of at least 90\%.                                                                                                                                                                                 &                       & git-lfs-authenticate command; lfs server \\\hline
+        \rowcolor[HTML]{DDFFDD}        R3.2       & Every custom code shall adhere to a common and well-recognized good practices handbook, to be chosen.                                                                                                                                                                                 &                       & git-lfs-authenticate command; lfs server \\ \hline
+        \rowcolor[HTML]{EEFFEE}        R3.2.1     & Custom apis of the system should adhere to the following good practices handbooks \url{https://rust-lang.github.io/api-guidelines/}, \url{https://cheats.rs/#idiomatic-rust} and \url{https://rust-unofficial.github.io/patterns/}                                                    &                       &                                          \\\hline
+        \rowcolor[HTML]{EEFFEE}        R3.2.2     & Custom code of the system shall use the linter \url{https://github.com/rust-lang/rust-clippy}                                                                                                                                                                                         &                       &                                          \\\hline
+        \rowcolor[HTML]{FFDDDD}        R3.3       & The system shall be documented focussing on: the system in its whole, the system components, maintenance processes.                                                                                                                                                                   &                       &                                          \\ \hline
+        \rowcolor[HTML]{FFEEEE}        R3.3.1     & Every custom and non-custom code of the system shall be documented in term of context and role in the system, and in term of possible replacements.                                                                                                                                   &                       &                                          \\\hline
+        \rowcolor[HTML]{FFEEEE}        R3.3.2     & The system shall be documented in term of architecture, and in term of maintenance processes.                                                                                                                                                                                         &                       &                                          \\\hline
+        \rowcolor[HTML]{FFEEEE}        R3.3.3     & The system shall be documented in term of deployment processes.                                                                                                                                                                                                                       &                       &                                          \\\hline
+        \rowcolor[HTML]{FFEEEE}        R3.3.4     & Custom code of the system shall be documented in term of technical choices and design.                                                                                                                                                                                                &                       &                                          \\\hline
         \rowcolor[HTML]{C0C0C0}        R4         & The system shall be deployable in less than 1h in an enterprise-grade environment.                                                                                                                                                                                                    &                       &                                          \\ \hline
         \rowcolor[HTML]{DDFFDD}        R4.1       & The system shall be deployable in conteneurised linux environments in a reproducible and documented way.                                                                                                                                                                              &                       & Docker, docker-compose                   \\ \hline
         \rowcolor[HTML]{DDFFDD}        R4.2       & Only the lock API, the batch API, and the git commands shall be exposed to the outside.                                                                                                                                                                                               &                       & Nginx                                    \\ \hline
@@ -76,15 +128,5 @@
 \titleformat{\section}
 {\normalfont\Large\bfseries}{\llap{\parbox{\titleindent}{\thesection\hfill}}}{0em}{}
 
-\newgeometry{left=3cm,right=3cm,top=3cm,bottom=5cm}
 
-\subsection{What's next}
-
-The previous table show that the core is now implemented. The next step will be to 
-
-\begin{itemize}
-    \item Implement the locks API
-    \item Add new storage backends (local file storage, mainly)
-    \item Further documentation shall be written.
-    \item Backups and resource limits shall be implemented.
-\end{itemize}
+\end{document}
