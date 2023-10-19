@@ -31,3 +31,7 @@ tests/runner/ssh/*
 
 tests/architectures/nginx/ssl/*
 !tests/architectures/nginx/ssl/.gitkeep
+
+# IDEs
+.vscode/
+.idea/
