@@ -1,5 +1,6 @@
 # generate ssh key of the client tester
 ssh-keygen -t rsa -f runner/ssh/id_rsa
+ssh-keygen -t rsa -f runner/ssh/id_rsa_2
 
 # generate ssl certificate for nginx reverse proxy
 mkdir -p ./architectures/nginx/ssl

@@ -66,6 +66,20 @@ expect_to_fail() {
     echo "[ok] failed as expected"
 }
 
+expect_to_fail_capturing_output() {
+    header "Expect to fail: $@"
+    rm -f /tmp/tar_stdout /tmp/tar_stderr
+    eval "$@" 1>/tmp/tar_stdout 2>/tmp/tar_stderr
+    s=$?
+    stdout_var=$( cat /tmp/tar_stdout )
+    stderr_var=$( cat /tmp/tar_stderr )
+    if [ $s -eq 0 ]; then
+        echo "    > FAIL: command should have failed but succeeded"
+        exit 1
+    fi
+    echo "[ok] failed as expected"
+}
+
 expect_file_to_contains() {
     if [ ! -f "$1" ]; then
         header "Expect file $1 to contains '$2'"
