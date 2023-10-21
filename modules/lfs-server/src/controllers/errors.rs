@@ -65,10 +65,12 @@ pub async fn handle_and_filter_error_details<B>(
     req: Request<B>,
     next: Next<B>,
 ) -> impl IntoResponse {
+    let method = req.method().clone();
+    let uri = req.uri().clone();
     let resp = next.run(req).await;
     let status = resp.status();
 
-    if status.is_success() {
+    if status.is_success() || status == StatusCode::CONFLICT {
         return Ok(resp);
     }
 
@@ -83,12 +85,13 @@ pub async fn handle_and_filter_error_details<B>(
         Some(message) => message,
         None => "Unknown error",
     };
+    let request_route = format!("Server error ({} {})", method, uri);
 
     // print the error to the console
     tracing::error!(
         status = ?status,
         error = ?error_message,
-        "Internal server error",
+        request_route,
     );
 
     let error_builder = ErrorBuilder::new(&status, &inner_error_message);

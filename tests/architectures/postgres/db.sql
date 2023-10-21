@@ -1,0 +1,8 @@
+CREATE TABLE locks (
+	id SERIAL PRIMARY KEY,
+	path TEXT NOT NULL,
+	ref_name TEXT NOT NULL,
+	repo TEXT NOT NULL,
+	owner TEXT NOT NULL,
+	locked_at TIMESTAMP NOT NULL DEFAULT NOW()
+);

@@ -1,10 +1,8 @@
+use std::fmt::{Display, Formatter};
 use std::time::SystemTime;
 
 use async_trait::async_trait;
-
-pub struct LockOwner {
-    pub name: String,
-}
+use crate::api::locks::response::LockOwner;
 
 pub struct Lock {
     pub id: String,
@@ -16,13 +14,31 @@ pub struct Lock {
 
 #[derive(Debug)]
 pub enum LocksProviderError {
-    ConnectionFailure(Box<dyn std::error::Error>),
-    RequestPreparationFailure(Box<dyn std::error::Error>),
-    RequestExecutionFailure(Box<dyn std::error::Error>),
-    ParsingResponseDataFailure(Box<dyn std::error::Error>),
+    ConnectionFailure(Box<dyn std::error::Error + Send>),
+    RequestPreparationFailure(Box<dyn std::error::Error + Send>),
+    RequestExecutionFailure(Box<dyn std::error::Error + Send>),
+    ParsingResponseDataFailure(Box<dyn std::error::Error + Send>),
     InvalidId,
     InvalidLimit,
     InvalidCursor,
+    LockNotFound,
+    LockAlreadyExists,
+}
+
+impl Display for LocksProviderError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            LocksProviderError::ConnectionFailure(err) => write!(f, "ConnectionFailure: {}", err),
+            LocksProviderError::RequestPreparationFailure(err) => write!(f, "RequestPreparationFailure: {}", err),
+            LocksProviderError::RequestExecutionFailure(err) => write!(f, "RequestExecutionFailure: {}", err),
+            LocksProviderError::ParsingResponseDataFailure(err) => write!(f, "ParsingResponseDataFailure: {}", err),
+            LocksProviderError::InvalidId => write!(f, "InvalidId"),
+            LocksProviderError::InvalidLimit => write!(f, "InvalidLimit"),
+            LocksProviderError::InvalidCursor => write!(f, "InvalidCursor"),
+            LocksProviderError::LockNotFound => write!(f, "LockNotFound"),
+            LocksProviderError::LockAlreadyExists => write!(f, "LockAlreadyExists"),
+        }
+    }
 }
 
 #[async_trait]
@@ -32,8 +48,8 @@ pub trait LocksProvider: Sync + Send {
         repo: &str,
         user_name: &str,
         path: &str,
-        ref_name: &str,
-    ) -> Result<String, LocksProviderError>;
+        ref_name: Option<&str>,
+    ) -> Result<(Lock, bool), LocksProviderError>;
     async fn list_locks(
         &self,
         repo: &str,

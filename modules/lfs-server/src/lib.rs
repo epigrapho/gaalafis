@@ -4,6 +4,10 @@ pub mod api {
         pub mod body;
         pub mod response;
     }
+    pub mod locks {
+        pub mod body;
+        pub mod response;
+    }
     pub mod enums;
     pub mod jwt;
 }
@@ -15,6 +19,7 @@ pub mod controllers {
         pub mod upload;
         pub mod download;
     }
+    pub mod locks;
 }
 
 pub mod services {

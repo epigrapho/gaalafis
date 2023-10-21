@@ -5,12 +5,14 @@ use crate::services::jwt::Jwt;
 #[derive(Debug)]
 pub struct RepoTokenPayload {
     repo: String,
+    pub user: String,
     operation: String,
 }
 
 impl RepoTokenPayload {
     pub fn new(token: &Jwt) -> Result<RepoTokenPayload, (StatusCode, String)> {
         let repo = token.get_claim("repo")?;
+        let user = token.get_claim("user")?;
         let operation = token.get_claim("operation")?;
 
         // Operation should be upload or download
@@ -23,6 +25,7 @@ impl RepoTokenPayload {
 
         Ok(RepoTokenPayload {
             repo,
+            user,
             operation,
         })
     }
@@ -41,6 +44,7 @@ impl RepoTokenPayload {
     pub fn new_for_test(repo: &str, operation: &str) -> RepoTokenPayload {
         RepoTokenPayload {
             repo: repo.to_string(),
+            user: String::from("John Doe"),
             operation: operation.to_string(),
         }
     }
@@ -55,6 +59,7 @@ mod tests {
         let token = Jwt::new_for_test(
             vec![
                 ("repo".to_string(), "my-repo".to_string()),
+                ("user".to_string(), "John Doe".to_string()),
                 ("operation".to_string(), "download".to_string()),
             ]
             .into_iter()
@@ -78,9 +83,24 @@ mod tests {
     }
 
     #[test]
-    fn test_new_repo_token_payload_missing_operation() {
+    fn test_new_repo_token_payload_missing_user() {
         let token = Jwt::new_for_test(
             vec![("repo".to_string(), "my-repo".to_string())]
+                .into_iter()
+                .collect(),
+        );
+        let err = super::RepoTokenPayload::new(&token).unwrap_err();
+        assert_eq!(err.0, axum::http::StatusCode::UNAUTHORIZED);
+        assert_eq!(err.1, "Claim user not found in token");
+    }
+
+    #[test]
+    fn test_new_repo_token_payload_missing_operation() {
+        let token = Jwt::new_for_test(
+            vec![
+                ("repo".to_string(), "my-repo".to_string()),
+                ("user".to_string(), "John Doe".to_string()),
+            ]
                 .into_iter()
                 .collect(),
         );
@@ -94,6 +114,7 @@ mod tests {
         let token = Jwt::new_for_test(
             vec![
                 ("repo".to_string(), "my-repo".to_string()),
+                ("user".to_string(), "John Doe".to_string()),
                 ("operation".to_string(), "foo".to_string()),
             ]
             .into_iter()
@@ -111,6 +132,7 @@ mod tests {
     fn test_has_access() {
         let payload = super::RepoTokenPayload {
             repo: "my-repo".to_string(),
+            user: "John Doe".to_string(),
             operation: "download".to_string(),
         };
         assert!(payload.has_access("my-repo"));
@@ -120,6 +142,7 @@ mod tests {
     fn test_has_access_false() {
         let payload = super::RepoTokenPayload {
             repo: "my-repo".to_string(),
+            user: "John Doe".to_string(),
             operation: "download".to_string(),
         };
         assert!(!payload.has_access("another-repo"));
@@ -129,6 +152,7 @@ mod tests {
     fn test_has_write_access() {
         let payload = super::RepoTokenPayload {
             repo: "my-repo".to_string(),
+            user: "John Doe".to_string(),
             operation: "upload".to_string(),
         };
         assert!(payload.has_write_access());
@@ -138,6 +162,7 @@ mod tests {
     fn test_has_write_access_false() {
         let payload = super::RepoTokenPayload {
             repo: "my-repo".to_string(),
+            user: "John Doe".to_string(),
             operation: "download".to_string(),
         };
         assert!(!payload.has_write_access());

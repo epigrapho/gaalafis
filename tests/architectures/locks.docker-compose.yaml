@@ -1,0 +1,96 @@
+services:
+  gitolite:
+    image: gaalafis:gitolite
+    environment:
+      SSH_KEY_FILE: /run/secrets/admin-tester.pub
+      SSH_KEY_NAME: admin-tester
+    secrets:
+      - admin-tester.pub
+      - jwt_secret
+
+  proxy: 
+    image: gaalafis:nginx
+    depends_on:
+      - lfs
+    volumes:
+      - ./nginx/ssl:/etc/nginx/ssl
+  
+  lfs: 
+    image: gaalafis:lfs-server
+    environment:
+      SBS_BUCKET_NAME: bucket
+      SBS_ACCESS_KEY_FILE: /run/secrets/sbs_access_key
+      SBS_SECRET_KEY_FILE: /run/secrets/sbs_secret_key
+      SBS_REGION: us-east-1
+      SBS_HOST: http://bucket:9000
+      RUST_BACKTRACE: 1
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
+      JWT_EXPIRES_IN: 3600
+      DATABASE_HOST: database
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD_FILE: /run/secrets/db_password
+      DATABASE_NAME: test_locks_db
+    depends_on:
+      - bucket
+      - database
+    secrets:
+      - sbs_access_key
+      - sbs_secret_key
+      - jwt_secret
+      - db_password
+  
+  bucket:
+    image: minio/minio
+    entrypoint: sh /root/.minio-entrypoint/minio_entrypoint.sh
+    command: -c 'mkdir -p /data/bucket && minio server /data --console-address ":9001"'
+    environment:
+      MINIO_ACCESS_KEY_FILE: /run/secrets/sbs_access_key
+      MINIO_SECRET_KEY_FILE: /run/secrets/sbs_secret_key
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio:/data
+      - ./minio:/root/.minio-entrypoint
+    secrets:
+      - sbs_access_key
+      - sbs_secret_key
+
+  database:
+    image: postgres:15.0
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+      POSTGRES_DB: test_locks_db
+    ports:
+      - 5432:5432
+    secrets:
+      - db_password
+    volumes:
+      - ./postgres:/docker-entrypoint-initdb.d
+
+  tester_client: 
+    image: gaalafis:tester_client
+    command: tail -f /dev/null
+    depends_on:
+      - gitolite
+      - lfs
+      - proxy
+    volumes:
+      - ../tests:/root/tests
+      - ../runner/ssh:/root/.ssh
+
+secrets:
+  admin-tester.pub:
+    file: ../runner/ssh/id_rsa.pub
+  jwt_secret:
+    file: ./secrets/jwt_secret
+  sbs_access_key:
+    file: ./secrets/sbs_access_key
+  sbs_secret_key:
+    file: ./secrets/sbs_secret_key
+  db_password:
+    file: ./secrets/db_password  
+  
+volumes: 
+  minio:

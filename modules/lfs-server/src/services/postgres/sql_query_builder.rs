@@ -70,13 +70,16 @@ impl SqlQueryBuilder {
         Ok(self)
     }
 
-    pub fn limit(&mut self, limit: Option<u64>, default: u64, overflow: i64) -> Result<&mut Self, Box<dyn std::error::Error>> {
-        let limit = limit.unwrap_or(default) as i64;
-        if limit < 0 {
-            return Err("Invalid limit".into());
+    pub fn limit(&mut self, limit: Option<u64>, default: u64, overflow: i64, min: u64, max: u64) -> Result<&mut Self, Box<dyn std::error::Error>> {
+        let mut limit = limit.unwrap_or(default);
+        if limit < min {
+            limit = min
+        }
+        if limit > max {
+            limit = max
         }
         self.pre_add_param(" LIMIT ");
-        self.params.push(Box::new(limit + overflow));
+        self.params.push(Box::new(limit as i64 + overflow));
         Ok(self)
     }
 

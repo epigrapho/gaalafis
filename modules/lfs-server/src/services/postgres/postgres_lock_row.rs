@@ -1,8 +1,9 @@
 use std::fmt;
 use std::time::SystemTime;
 use tokio_postgres::{row::RowIndex, types::FromSql, Row};
+use crate::api::locks::response::LockOwner;
 
-use crate::traits::locks::{Lock, LockOwner, LocksProviderError};
+use crate::traits::locks::{Lock, LocksProviderError};
 
 impl Lock {
     fn try_get_from_row<'a, I, T>(row: &'a Row, index: I) -> Result<T, LocksProviderError>
