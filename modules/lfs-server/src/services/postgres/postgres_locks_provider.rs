@@ -121,16 +121,6 @@ impl PostgresLocksProvider {
             .map_err(|e| LocksProviderError::RequestExecutionFailure(Box::new(e)))
     }
 
-    async fn query_one(
-        &self,
-        sql: String,
-        params: Vec<Box<dyn ToSql + Sync + Send>>,
-    ) -> Result<Row, LocksProviderError> {
-        let client = self.get_client().await?;
-        let rows = Self::query_raw(&client, sql, params).await?;
-        Self::one_row(rows).await
-    }
-
     async fn query(
         &self,
         sql: String,
@@ -242,24 +232,42 @@ impl LocksProvider for PostgresLocksProvider {
         ref_name: Option<&str>,
         force: Option<bool>,
     ) -> Result<Lock, LocksProviderError> {
-        let mut query = SqlQueryBuilder::new();
+        let force = force.is_some_and(|f| f);
+        let mut client = self.get_client().await?;
+        let transaction = client
+            .transaction()
+            .await
+            .map_err(|e| LocksProviderError::ConnectionFailure(Box::new(e)))?;
 
+        let mut query = SqlQueryBuilder::new();
+        query
+            .append("SELECT id, path, ref_name, owner, locked_at FROM locks WHERE ")
+            .add_param_str_string("repo = ", repo)
+            .add_param_str_i32(" AND id = ", id)
+            .map_err(|_| LocksProviderError::InvalidId)?
+            .add_param_optional_str_string(" AND ref_name = ", ref_name);
+        let (sql, params) = query.build();
+        let stream = Self::query_raw(&transaction, sql, params).await?;
+        let lock = Self::one_row(stream).await
+            .map(|row| Lock::from_row(&row))??;
+
+        if lock.owner.name != user_name && !force {
+            return Err(LocksProviderError::ForceDeleteRequired)
+        }
+
+        let mut query = SqlQueryBuilder::new();
         query
             .append("DELETE FROM locks WHERE ")
             .add_param_str_string("repo = ", repo)
             .add_param_str_i32(" AND id = ", id)
             .map_err(|_| LocksProviderError::InvalidId)?
-            .add_param_optional_str_string(" AND ref_name = ", ref_name)
-            .add_param_skipable_str_string(" AND owner = ", user_name, force.is_some_and(|f| f))
-            .append(" RETURNING id, path, ref_name, owner, locked_at");
-
+            .add_param_optional_str_string(" AND ref_name = ", ref_name);
         let (sql, params) = query.build();
-        let row = self
-            .query_one(sql, params)
-            .await
-            .map(|row| Lock::from_row(&row))??;
+        Self::query_raw(&transaction, sql, params).await?;
+        transaction.commit().await
+            .map_err(|e| LocksProviderError::RequestExecutionFailure(Box::new(e)))?;
 
-        Ok(row)
+        Ok(lock)
     }
 }
 

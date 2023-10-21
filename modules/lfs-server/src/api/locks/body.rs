@@ -27,6 +27,7 @@ pub struct ListLocksQuery {
 pub struct ListLocksForVerificationPayload {
     pub cursor: Option<String>,
     pub limit: Option<String>,
+    #[serde(rename = "ref")]
     pub ref_: Option<Ref>,
 }
 

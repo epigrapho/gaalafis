@@ -99,7 +99,7 @@ pub async fn handle_and_filter_error_details<B>(
     match status {
         // Explicitly required by LFS documentation
         StatusCode::UNAUTHORIZED => error_builder.error("Unauthorized"),
-        StatusCode::FORBIDDEN => error_builder.error("Missing write authorization"),
+        StatusCode::FORBIDDEN => error_builder.error("Forbidden"),
         StatusCode::NOT_FOUND => error_builder.error("Not found"),
         StatusCode::UNPROCESSABLE_ENTITY | StatusCode::BAD_REQUEST => error_builder
             .custom_status_with_message(StatusCode::UNPROCESSABLE_ENTITY, "Invalid payload"),

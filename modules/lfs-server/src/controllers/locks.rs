@@ -1,7 +1,10 @@
 use crate::api::jwt::RepoTokenPayload;
-use crate::api::locks::body::{CreateLockPayload, DeleteLockPayload, ListLocksQuery};
+use crate::api::locks::body::{
+    CreateLockPayload, DeleteLockPayload, ListLocksForVerificationPayload, ListLocksQuery,
+};
 use crate::api::locks::response::{
-    CreateLockResponse, DeleteLockResponse, ListLocksResponse, Lock,
+    CreateLockResponse, DeleteLockResponse, ListLocksForVerificationResponse, ListLocksResponse,
+    Lock,
 };
 use crate::api::repo_query::QueryRepo;
 use crate::services::jwt::Jwt;
@@ -11,13 +14,7 @@ use axum::extract::{Path, Query, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::Json;
 use std::sync::Arc;
-
-fn discard_if_empty(s: Option<&str>) -> Option<&str> {
-    match s {
-        Some("") => None,
-        s => s,
-    }
-}
+use crate::traits;
 
 fn verify_lock_jwt(
     repo: &str,
@@ -83,45 +80,86 @@ pub async fn post_lock(
     }
 }
 
+async fn list_locks_helper(
+    headers: HeaderMap,
+    services: &State<Arc<dyn Services + Send + Sync + 'static>>,
+    repo: &str,
+    path: Option<&str>,
+    id: Option<&str>,
+    (limit, cursor): (Option<&str>, Option<&str>),
+    ref_name: Option<&str>,
+) -> Result<(String, Option<String>, Vec<traits::locks::Lock>), (StatusCode, String)>{
+    // 1) Preparation
+    let user = verify_lock_jwt(repo, headers, services)?;
+    let locks_provider = get_locks_provider(services)?;
+
+    // 2) List the locks
+    locks_provider
+        .list_locks(
+            repo,
+            path.filter(|s| !s.is_empty()),
+            id.filter(|s| !s.is_empty()),
+            cursor.filter(|s| !s.is_empty()),
+            limit
+                .map(|q| q.parse::<u64>().unwrap_or(100)),
+            ref_name.filter(|s| !s.is_empty()),
+        )
+        .await
+        .map(|(next_cursor, locks)| (user, next_cursor, locks))
+        .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))
+}
+
 pub async fn list_locks(
     headers: HeaderMap,
     query: Query<ListLocksQuery>,
     services: State<Arc<dyn Services + Send + Sync + 'static>>,
 ) -> Result<Json<ListLocksResponse>, (StatusCode, String)> {
-    // 1) Preparation
-    let repo = &query.repo;
-    verify_lock_jwt(repo, headers, &services)?;
-    let locks_provider = get_locks_provider(&services)?;
+    let (_, next_cursor, locks) = list_locks_helper(
+        headers,
+        &services,
+        &query.repo,
+        query.path.as_deref(),
+        query.id.as_deref(),
+        (query.limit.as_deref(), query.cursor.as_deref()),
+        query.refspec.as_deref(),
+    ).await?;
 
-    // 2) List the locks
-    let (next_cursor, locks) = locks_provider
-        .list_locks(
-            repo,
-            discard_if_empty(query.path.as_deref()),
-            discard_if_empty(query.id.as_deref()),
-            discard_if_empty(query.cursor.as_deref()),
-            query
-                .limit
-                .as_ref()
-                .map(|q| q.parse::<u64>().unwrap_or(100)),
-            discard_if_empty(query.refspec.as_deref()),
-        )
-        .await
-        .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
-
-    // 3) In any case, we will return the lock
-    let locks = locks
-        .iter()
-        .map(|lock| {
-            Lock::new(
-                lock.id.clone(),
-                lock.path.clone(),
-                lock.locked_at,
-                lock.owner.name.clone(),
-            )
-        })
+    let response_locks: Vec<Lock> = locks
+        .into_iter()
+        .map(|lock| Lock::new(lock.id, lock.path, lock.locked_at, lock.owner.name))
         .collect();
-    Ok(Json(ListLocksResponse::new(locks, next_cursor)))
+
+    Ok(Json(ListLocksResponse::new(response_locks, next_cursor)))
+}
+
+pub async fn list_locks_for_verification(
+    headers: HeaderMap,
+    query: Query<QueryRepo>,
+    services: State<Arc<dyn Services + Send + Sync + 'static>>,
+    Json(payload): Json<ListLocksForVerificationPayload>,
+) -> Result<Json<ListLocksForVerificationResponse>, (StatusCode, String)> {
+    // 1) List from backend
+    let (user, next_cursor, locks) = list_locks_helper(
+        headers,
+        &services,
+        &query.repo,
+        None,
+        None,
+        (payload.limit.as_deref(), payload.cursor.as_deref()),
+        payload.ref_.map(|r| r.name).as_deref(),
+    ).await?;
+
+    // 2) Separate locks between ours and theirs
+    let (ours, theirs) = locks.into_iter()
+        .map(|lock| Lock::new(lock.id, lock.path, lock.locked_at, lock.owner.name))
+        .partition(|l| l.is_owner(&user));
+
+    // 3) Return the locks
+    Ok(Json(ListLocksForVerificationResponse::new(
+        ours,
+        theirs,
+        next_cursor,
+    )))
 }
 
 pub async fn unlock(
@@ -146,6 +184,7 @@ pub async fn unlock(
         .await
         .map_err(|err| match err {
             LocksProviderError::LockNotFound => (StatusCode::NOT_FOUND, err.to_string()),
+            LocksProviderError::ForceDeleteRequired => (StatusCode::FORBIDDEN, err.to_string()),
             LocksProviderError::InvalidId => (StatusCode::BAD_REQUEST, err.to_string()),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),
         })?;

@@ -27,6 +27,9 @@ impl Lock {
             }
         }
     }
+    pub fn is_owner(&self, user: &str) -> bool {
+        self.owner.name == user
+    }
 }
 
 #[derive(Serialize)]
@@ -64,6 +67,12 @@ pub struct ListLocksForVerificationResponse {
     theirs: Vec<Lock>,
     #[serde(skip_serializing_if = "Option::is_none")]
     next_cursor: Option<String>,
+}
+
+impl ListLocksForVerificationResponse {
+    pub fn new(ours: Vec<Lock>, theirs: Vec<Lock>, next_cursor: Option<String>) -> Self {
+        ListLocksForVerificationResponse { ours, theirs, next_cursor }
+    }
 }
 
 #[derive(Serialize)]

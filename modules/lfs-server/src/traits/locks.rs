@@ -23,6 +23,7 @@ pub enum LocksProviderError {
     InvalidCursor,
     LockNotFound,
     LockAlreadyExists,
+    ForceDeleteRequired,
 }
 
 impl Display for LocksProviderError {
@@ -37,6 +38,7 @@ impl Display for LocksProviderError {
             LocksProviderError::InvalidCursor => write!(f, "InvalidCursor"),
             LocksProviderError::LockNotFound => write!(f, "LockNotFound"),
             LocksProviderError::LockAlreadyExists => write!(f, "LockAlreadyExists"),
+            LocksProviderError::ForceDeleteRequired => write!(f, "ForceDeleteRequired"),
         }
     }
 }

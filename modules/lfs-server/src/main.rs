@@ -12,7 +12,7 @@ use lfs_info_server::{
     },
     traits::{services::Services, file_storage::{FileStorageMetaRequester, FileStorageLinkSigner}, token_encoder_decoder::TokenEncoderDecoder},
 };
-use lfs_info_server::controllers::locks::{list_locks, post_lock, unlock};
+use lfs_info_server::controllers::locks::{list_locks, list_locks_for_verification, post_lock, unlock};
 use lfs_info_server::services::postgres::postgres_locks_provider::PostgresLocksProvider;
 use lfs_info_server::traits::locks::LocksProvider;
 
@@ -104,6 +104,7 @@ async fn main() {
         .route("/locks", post(post_lock))
         .route("/locks", get(list_locks))
         .route("/locks/:id/unlock", post(unlock))
+        .route("/locks/verify", post(list_locks_for_verification))
         // Error handling
         .layer(middleware::from_fn(handle_and_filter_error_details))
         .with_state(services);
