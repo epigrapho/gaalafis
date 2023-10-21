@@ -45,7 +45,7 @@ expect_stderr_to_contain 'content-type: application/json'
 
 # 6) download token used to upload file (unauthorized)
 run_with_header_capturing_outputs "curl -X POST '$base_url?repo=testing' -v -H 'Authorization: Bearer $testing_repo_download_token' -s -H 'Content-Type: application/json' -H 'Accept: */*' -d '$upload_body'"
-expect_stdout_to_contain '{"message":"Missing write authorization"}'
+expect_stdout_to_contain '{"message":"Forbidden"}'
 expect_stderr_to_contain 'HTTP/1.1 403 Forbidden'
 expect_stderr_to_contain 'content-type: application/json'
 

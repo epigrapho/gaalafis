@@ -34,15 +34,6 @@ run_with_header_capturing_outputs "curl -X GET 'https://$base_url?path=foo/bar2.
 expect_stdout_to_contain "{\"locks\":\[{\"id\":\"2\",\"path\":\"foo/bar2\.bin\",\"locked_at\":\"$date_regex\",\"owner\":{\"name\":\"admin-tester\"}}\]}"
 expect_stderr_to_contain "HTTP/1.1 200 OK"
 
-# List locks by refspec
-run_with_header_capturing_outputs "curl -X GET 'https://$base_url?refspec=feature' -v -H 'Authorization: Bearer $testing_repo_upload_token' -s -H 'Content-Type: application/json' -H 'Accept: */*' --insecure"
-expect_stdout_to_contain "{\"locks\":\[\]}"
-expect_stderr_to_contain "HTTP/1.1 200 OK"
-
-run_with_header_capturing_outputs "curl -X GET 'https://$base_url?refspec=master' -v -H 'Authorization: Bearer $testing_repo_upload_token' -s -H 'Content-Type: application/json' -H 'Accept: */*' --insecure"
-expect_stdout_to_contain "{\"locks\":\[{\"id\":\"1\",\"path\":\"foo/bar\.bin\",\"locked_at\":\"$date_regex\",\"owner\":{\"name\":\"admin-tester\"}},{\"id\":\"2\",\"path\":\"foo/bar2\.bin\",\"locked_at\":\"$date_regex\",\"owner\":{\"name\":\"admin-tester\"}}\]}"
-expect_stderr_to_contain "HTTP/1.1 200 OK"
-
 # List locks by id
 run_with_header_capturing_outputs "curl -X GET 'https://$base_url?id=2' -v -H 'Authorization: Bearer $testing_repo_upload_token' -s -H 'Content-Type: application/json' -H 'Accept: */*' --insecure"
 expect_stdout_to_contain "{\"locks\":\[{\"id\":\"2\",\"path\":\"foo/bar2\.bin\",\"locked_at\":\"$date_regex\",\"owner\":{\"name\":\"admin-tester\"}}\]}"

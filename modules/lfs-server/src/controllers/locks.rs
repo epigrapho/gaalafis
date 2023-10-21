@@ -20,12 +20,13 @@ fn verify_lock_jwt(
     repo: &str,
     headers: HeaderMap,
     services: &State<Arc<dyn Services + Send + Sync + 'static>>,
+    requires_write_access: bool,
 ) -> Result<String, (StatusCode, String)> {
     // 1) Verify that user has write access to files
     let token_decoder = services.token_encoder_decoder();
     let jwt = Jwt::from_headers(&headers, token_decoder)?;
     let jwt_payload = RepoTokenPayload::new(&jwt)?;
-    if !jwt_payload.has_write_access() {
+    if requires_write_access && !jwt_payload.has_write_access() {
         return Err((StatusCode::UNAUTHORIZED, String::from("Unauthorized")));
     }
 
@@ -54,7 +55,7 @@ pub async fn post_lock(
 ) -> Result<(StatusCode, Json<CreateLockResponse>), (StatusCode, String)> {
     // 1) Preparation
     let repo = &query.repo;
-    let user = verify_lock_jwt(repo, headers, &services)?;
+    let user = verify_lock_jwt(repo, headers, &services, true)?;
     let locks_provider = get_locks_provider(&services)?;
 
     // 2) Create the lock
@@ -87,10 +88,10 @@ async fn list_locks_helper(
     path: Option<&str>,
     id: Option<&str>,
     (limit, cursor): (Option<&str>, Option<&str>),
-    ref_name: Option<&str>,
+    _ref_name: Option<&str>, // Specification prohibit the use of ref name to filter
 ) -> Result<(String, Option<String>, Vec<traits::locks::Lock>), (StatusCode, String)>{
     // 1) Preparation
-    let user = verify_lock_jwt(repo, headers, services)?;
+    let user = verify_lock_jwt(repo, headers, services, false)?;
     let locks_provider = get_locks_provider(services)?;
 
     // 2) List the locks
@@ -102,7 +103,7 @@ async fn list_locks_helper(
             cursor.filter(|s| !s.is_empty()),
             limit
                 .map(|q| q.parse::<u64>().unwrap_or(100)),
-            ref_name.filter(|s| !s.is_empty()),
+            None,
         )
         .await
         .map(|(next_cursor, locks)| (user, next_cursor, locks))
@@ -171,7 +172,7 @@ pub async fn unlock(
 ) -> Result<Json<DeleteLockResponse>, (StatusCode, String)> {
     // 1) Preparation
     let repo = &query.repo;
-    let user = verify_lock_jwt(repo, headers, &services)?;
+    let user = verify_lock_jwt(repo, headers, &services, true)?;
     let locks_provider = get_locks_provider(&services)?;
 
     // 2) Delete the locks

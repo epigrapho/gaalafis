@@ -99,6 +99,34 @@ expect_stdout_to_contain() {
     ok "Expect stdout to contains '$1'"
 }
 
+expect_stdout_to_match_ntimes() {
+    if ! echo "$stdout_var" | egrep -q "$1"; then
+        header "Expect stdout to match '$1' $2 times"
+        echo "    > FAIL: stdout does not match $1"
+        echo "    > stdout: $stdout_var"
+        exit 1
+    fi
+    count=$(echo "$stdout_var" | egrep -o "$1" | wc -l)
+    if [ $count -ne $2 ]; then
+        header "Expect stdout to match '$1' $2 times"
+        echo "    > FAIL: stdout match $1 $count times, expected $2"
+        echo "    > stdout: $stdout_var"
+        exit 1
+    fi
+    ok "Expect stdout to match '$1' $2 times"
+}
+
+expect_stdout_to_be_empty() {
+    len=$(echo -n "$stdout_var" | wc -c)
+    if [ $len -ne 0 ]; then
+        header "Expect stdout to be empty"
+        echo "    > FAIL: stdout is not empty"
+        echo "    > stdout: $stdout_var"
+        exit 1
+    fi
+    ok "Expect stdout to be empty"
+}
+
 expect_stderr_to_contain() {
     if ! echo "$stderr_var" | egrep -q "$1"; then
         header "Expect stderr to contains '$1'"
