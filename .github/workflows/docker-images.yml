@@ -22,7 +22,7 @@ jobs:
           tags: gaalafis/lfs-server:builder
 
       - name: Save builder
-        run: docker save -o builder-image.tar gaalafis/lfs-server:builder
+        run: docker save -o builder-image.tar builder
         shell: bash
 
       - name: Upload Runtime Image
@@ -69,11 +69,11 @@ jobs:
             type=sha,suffix=${{ matrix.build }}
 
       - name: Download Build Image
-        run: mv ${{ runner.workspace }}/build-image.tar build-image.tar
+        run: mv ${{ runner.workspace }}/builder-image.tar builder-image.tar
         shell: bash
 
       - name: Load Build Image
-        run: docker load -i build-image.tar
+        run: docker load -i builder-image.tar
         shell: bash
 
       - name: Build the Docker image
