@@ -34,8 +34,7 @@ jobs:
           target: runtime_sbs_custom_signing
           context: ./modules/lfs-server
           push: false
-          tags:
-            - ${{ steps.meta.outputs.tags }}
+          tags: ${{ steps.meta.outputs.tags }}
 
 # docker build ../modules/lfs-server -t "gaalafis/lfs-server:0.0.1-proxy-sbs" -f ../modules/lfs-server/Dockerfile --target=runtime_sbs_custom_signing
 # docker build ../modules/lfs-server -t "gaalafis/lfs-server:0.0.1-proxy-sbs-locks-pg" -f ../modules/lfs-server/Dockerfile --target=runtime_sbs_custom_signing_locks
