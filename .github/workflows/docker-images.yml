@@ -1,0 +1,43 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches:
+      - 'test-ci'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: gaalafis/lfs-server
+          tags: |
+            type=semver,pattern={{version}}-proxy-sbs-locks-pg
+            type=semver,pattern={{major}}.{{minor}}-proxy-sbs-locks-pg
+            type=sha,suffix=-proxy-sbs-locks-pg
+
+      - name: Build the Docker image
+        uses: docker/build-push-action@v2
+        with:
+          target: runtime_sbs_custom_signing
+          context: ./modules/lfs-server
+          push: false
+          tags:
+            - ${{ steps.meta.outputs.tags }}
+
+# docker build ../modules/lfs-server -t "gaalafis/lfs-server:0.0.1-proxy-sbs" -f ../modules/lfs-server/Dockerfile --target=runtime_sbs_custom_signing
+# docker build ../modules/lfs-server -t "gaalafis/lfs-server:0.0.1-proxy-sbs-locks-pg" -f ../modules/lfs-server/Dockerfile --target=runtime_sbs_custom_signing_locks
+# docker build ../modules/lfs-server -t "gaalafis/lfs-server:0.0.1-signer-sbs-locks" -f ../modules/lfs-server/Dockerfile --target=runtime_main
+# docker build ../modules/auth -t "gaalafis/gitolite:0.0.1" -f ../modules/auth/Dockerfile 
