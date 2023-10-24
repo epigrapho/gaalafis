@@ -25,10 +25,10 @@ jobs:
         run: docker save -o builder-image.tar builder
         shell: bash
 
-      - name: Upload Runtime Image
-        run: |
-          mv builder-image.tar ${{ runner.workspace }}/builder-image.tar
-        shell: bash
+      - uses: actions/upload-artifact@v3
+        with:
+          name: builder-image
+          path: builder-image.tar
 
   build:
     runs-on: ubuntu-latest
@@ -58,9 +58,11 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}${{ matrix.build }}
             type=sha,suffix=${{ matrix.build }}
 
-      - name: Download Build Image
-        run: mv ${{ runner.workspace }}/builder-image.tar builder-image.tar
-        shell: bash
+      - name: Retrieve saved Docker image
+        uses: actions/download-artifact@v3
+        with:
+          name: builder-image
+          path: builder-image.tar
 
       - name: Load Build Image
         run: docker load -i builder-image.tar
