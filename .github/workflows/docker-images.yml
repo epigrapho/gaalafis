@@ -11,7 +11,7 @@ jobs:
 
     strategy:
       matrix:
-        build: [-proxy-sbs, -proxy-sbs-locks-pg, -signer-sbs-locks]
+        build: [-proxy-sbs, -proxy-sbs-locks-pg, -signer-sbs-locks-pg]
 
     steps:
       - name: Check out the repo
