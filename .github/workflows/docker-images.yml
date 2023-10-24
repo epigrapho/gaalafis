@@ -5,13 +5,14 @@ on:
     tags:
       - 'v*'
 
-strategy:
-  matrix:
-    build: [-proxy-sbs, -proxy-sbs-locks-pg, -signer-sbs-locks]
-
 jobs:
   build:
     runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        build: [-proxy-sbs, -proxy-sbs-locks-pg, -signer-sbs-locks]
+
     steps:
       - name: Check out the repo
         uses: actions/checkout@v4
