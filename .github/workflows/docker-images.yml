@@ -22,7 +22,7 @@ jobs:
           tags: gaalafis/lfs-server:builder
 
       - name: Save builder
-        run: docker save -o builder-image.tar builder
+        run: docker save -o builder-image.tar build
         shell: bash
 
       - name: Upload Runtime Image
