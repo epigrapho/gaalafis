@@ -20,15 +20,15 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y openssl
 EXPOSE 3000
 
-FROM runtime AS runtime_sbs_custom_signing
+FROM runtime AS runtime-proxy-sbs
 COPY --from=builder /app/target/release/sbs_custom_signing /usr/local/bin/server
 ENTRYPOINT ["/usr/local/bin/server"]
 
-FROM runtime AS runtime_sbs_custom_signing_locks
+FROM runtime AS runtime-proxy-sbs-locks-pg
 COPY --from=builder /app/target/release/sbs_custom_signing_locks /usr/local/bin/server
 ENTRYPOINT ["/usr/local/bin/server"]
 
-FROM runtime AS runtime_main
+FROM runtime AS runtime-signer-sbs-locks-pg
 COPY --from=builder /app/target/release/lfs-info-server /usr/local/bin/server
 ENTRYPOINT ["/usr/local/bin/server"]
 
