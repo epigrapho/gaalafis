@@ -11,7 +11,7 @@ jobs:
 
     strategy:
       matrix:
-        build: [-proxy-sbs, -proxy-sbs-locks-pg, -signer-sbs, -signer-sbs-locks-pg]
+        build: [proxy-sbs, proxy-sbs-locks-pg, signer-sbs, signer-sbs-locks-pg]
 
     steps:
       - name: Check out the repo
@@ -29,27 +29,16 @@ jobs:
         with:
           images: epigrapho/gaalafis-lfs-server
           tags: |
-            type=semver,pattern={{version}}${{ matrix.build }}
-            type=semver,pattern={{major}}.{{minor}}${{ matrix.build }}
-            type=sha,suffix=${{ matrix.build }}
+            type=semver,pattern={{version}}-${{ matrix.build }}
+            type=semver,pattern={{major}}.{{minor}}-${{ matrix.build }}
+            type=sha,suffix=-${{ matrix.build }}
 
       - name: Build the Docker image
         uses: docker/build-push-action@v2
         with:
           context: ./modules/lfs-server
           file: ./modules/lfs-server/Dockerfile.prod
-          build-args: binary=signer-sbs
+          build-args: binary=${{ matrix.build }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          push: false
-
-
-# docker build 
-#   ./modules/lfs-server 
-#   -t "gaalafis/lfs-server:0.0.1-signer-sbs" 
-#   -f ./modules/lfs-server/Dockerfile.prod 
-#   --build-arg binary=signer-sbs 
-# docker build ../modules/lfs-server -t "gaalafis/lfs-server:0.0.1-proxy-sbs" -f ../modules/lfs-server/Dockerfile --target=runtime_sbs_custom_signing
-# docker build ../modules/lfs-server -t "gaalafis/lfs-server:0.0.1-proxy-sbs-locks-pg" -f ../modules/lfs-server/Dockerfile --target=runtime_sbs_custom_signing_locks
-# docker build ../modules/lfs-server -t "gaalafis/lfs-server:0.0.1-signer-sbs-locks" -f ../modules/lfs-server/Dockerfile --target=runtime_main
-# docker build ../modules/auth -t "gaalafis/gitolite:0.0.1" -f ../modules/auth/Dockerfile 
+          push: true
