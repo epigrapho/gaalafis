@@ -5,3 +5,9 @@ docker build ../modules/lfs-server -t "gaalafis/lfs-server:0.0.1-signer-sbs-lock
 docker build ../modules/auth -t "gaalafis/gitolite:0.0.1" -f ../modules/auth/Dockerfile 
 docker build . -t "gaalafis:tester_client" -f ./runner/Dockerfile 
 docker build ./architectures/nginx -t "gaalafis:nginx" -f ./architectures/nginx/Dockerfile
+
+
+
+docker build ../modules/lfs-server -t "gaalafis/lfs-server:0.0.1-proxy-sbs" -f ../modules/lfs-server/Dockerfile --target=runtime_sbs_custom_signing
+
+docker build ./modules/lfs-server -t "gaalafis/lfs-server:0.0.1-signer-sbs" -f ./modules/lfs-server/Dockerfile.prod --build-arg binary=signer-sbs
