@@ -8,7 +8,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     strategy:
       matrix:
         build: [-proxy-sbs, -proxy-sbs-locks-pg, -signer-sbs-locks]
@@ -33,13 +33,13 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}${{ matrix.build }}
             type=sha,suffix=${{ matrix.build }}
 
-      # - name: Build the Docker image
-      #   uses: docker/build-push-action@v2
-      #   with:
-      #     target: runtime_sbs_custom_signing
-      #     context: ./modules/lfs-server
-      #     push: false
-      #     tags: ${{ steps.meta.outputs.tags }}
+      - name: Build the Docker image
+        uses: docker/build-push-action@v2
+        with:
+          target: runtime${{ matrix.build }}
+          context: ./modules/lfs-server
+          push: false
+          tags: ${{ steps.meta.outputs.tags }}
 
 # docker build ../modules/lfs-server -t "gaalafis/lfs-server:0.0.1-proxy-sbs" -f ../modules/lfs-server/Dockerfile --target=runtime_sbs_custom_signing
 # docker build ../modules/lfs-server -t "gaalafis/lfs-server:0.0.1-proxy-sbs-locks-pg" -f ../modules/lfs-server/Dockerfile --target=runtime_sbs_custom_signing_locks
