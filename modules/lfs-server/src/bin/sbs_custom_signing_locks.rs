@@ -1,22 +1,25 @@
-use axum::routing::get;
+use axum::routing::{get, MethodRouter, put};
 use axum::{middleware, routing::post, Router};
 use s3::{creds::Credentials, Region};
 use std::net::SocketAddr;
 use std::sync::Arc;
+use axum::body::HttpBody;
 
 use lfs_info_server::{
     controllers::{
         errors::handle_and_filter_error_details,
         locks::{list_locks, list_locks_for_verification, post_lock, unlock},
-        objects::batch::post_objects_batch,
+        objects::{batch::post_objects_batch,download::download_object,upload::upload_object},
+
     },
     services::{
         jwt_token_encoder_decoder::JwtTokenEncoderDecoder,
         minio::single_bucket_storage::MinioSingleBucketStorage,
         postgres::postgres_locks_provider::PostgresLocksProvider,
+        custom_link_signer::CustomLinkSigner,
     },
     traits::{
-        file_storage::{FileStorageLinkSigner, FileStorageMetaRequester},
+        file_storage::{FileStorageProxy, FileStorageLinkSigner, FileStorageMetaRequester},
         locks::LocksProvider,
         services::Services,
         token_encoder_decoder::TokenEncoderDecoder,
@@ -31,6 +34,7 @@ pub struct InjectedServices {
     fs: MinioSingleBucketStorage,
     token_encoder_decoder: JwtTokenEncoderDecoder,
     locks_provider: Option<PostgresLocksProvider>,
+    signer: CustomLinkSigner<JwtTokenEncoderDecoder>,
 }
 
 impl InjectedServices {
@@ -50,7 +54,7 @@ impl InjectedServices {
             None,
             None,
         )
-        .unwrap();
+            .unwrap();
         let public_sbs_region = std::env::var("SBS_PUBLIC_REGION");
         let public_sbs_host = std::env::var("SBS_PUBLIC_HOST");
         let public_region = match (public_sbs_region, public_sbs_host) {
@@ -61,11 +65,23 @@ impl InjectedServices {
             _ => None,
         };
         let region = Region::from_env("SBS_REGION", Some("SBS_HOST")).unwrap();
+
+        // Jwt
+        let jwt_token_encoder_decoder =
+            JwtTokenEncoderDecoder::from_file_env_var("JWT_SECRET_FILE", "JWT_EXPIRES_IN");
+
+        // Link signer
+        let link_token_encoder_decoder = JwtTokenEncoderDecoder::from_file_env_var(
+            "CUSTOM_SIGNER_SECRET_FILE",
+            "CUSTOM_SIGNER_EXPIRES_IN",
+        );
+
         InjectedServices {
             fs: MinioSingleBucketStorage::new(bucket_name, credentials, region, public_region),
-            token_encoder_decoder: JwtTokenEncoderDecoder::from_file_env_var(
-                "JWT_SECRET_FILE",
-                "JWT_EXPIRES_IN",
+            token_encoder_decoder: jwt_token_encoder_decoder,
+            signer: CustomLinkSigner::from_env_var(
+                "CUSTOM_SIGNER_HOST",
+                link_token_encoder_decoder,
             ),
             locks_provider: PostgresLocksProvider::try_new_from_env_variables(
                 "DATABASE_HOST",
@@ -83,11 +99,15 @@ impl Services for InjectedServices {
     }
 
     fn file_storage_link_signer(&self) -> &(dyn FileStorageLinkSigner + 'static) {
-        &self.fs
+        &self.signer
     }
 
     fn token_encoder_decoder(&self) -> &(dyn TokenEncoderDecoder + 'static) {
         &self.token_encoder_decoder
+    }
+
+    fn file_storage_proxy(&self) -> Option<&(dyn FileStorageProxy + 'static)> {
+        Some(&self.fs)
     }
 
     fn locks_provider(&self) -> Option<&(dyn LocksProvider + 'static)> {
@@ -101,6 +121,25 @@ impl Services for InjectedServices {
 /*                                   Server                                   */
 /* -------------------------------------------------------------------------- */
 
+trait RouterExt<S, B>
+    where
+        B: HttpBody + Send + 'static,
+        S: Clone + Send + Sync + 'static,
+{
+    fn directory_route(self, path: &str, method_router: MethodRouter<S, B>) -> Self;
+}
+
+impl<S, B> RouterExt<S, B> for Router<S, B>
+    where
+        B: HttpBody + Send + 'static,
+        S: Clone + Send + Sync + 'static,
+{
+    fn directory_route(self, path: &str, method_router: MethodRouter<S, B>) -> Self {
+        self.route(path, method_router.clone())
+            .route(&format!("{path}/"), method_router)
+    }
+}
+
 #[tokio::main]
 async fn main() {
     // initialize tracing
@@ -112,11 +151,15 @@ async fn main() {
     // build our application with a route
     let app = Router::new()
         // `POST /objects/batch?repo=a/b/c`
-        .route("/objects/batch", post(post_objects_batch))
-        .route("/locks", post(post_lock))
-        .route("/locks", get(list_locks))
-        .route("/locks/:id/unlock", post(unlock))
-        .route("/locks/verify", post(list_locks_for_verification))
+        .directory_route("/objects/batch", post(post_objects_batch))
+        // `PUT /objects/access/<oid>?repo=a/b/c`
+        .directory_route("/objects/access/:oid", put(upload_object))
+        // `GET /objects/access/<oid>?repo=a/b/c`
+        .directory_route("/objects/access/:oid", get(download_object))
+        .directory_route("/locks", post(post_lock))
+        .directory_route("/locks", get(list_locks))
+        .directory_route("/locks/:id/unlock", post(unlock))
+        .directory_route("/locks/verify", post(list_locks_for_verification))
         // Error handling
         .layer(middleware::from_fn(handle_and_filter_error_details))
         .with_state(services);
