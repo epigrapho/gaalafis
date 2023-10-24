@@ -19,16 +19,16 @@ jobs:
           target: builder
           context: ./modules/lfs-server
           push: false
+          tags: gaalafis/lfs-server:builder
 
-      - name: Cache Docker Build Stages
-        uses: actions/cache@v2
-        with:
-          path: |
-            /var/lib/docker/image
-            /var/lib/docker/overlay2
-            /var/lib/docker/containers
-          key: docker-build-${{ runner.os }}-${{ hashFiles('**/Dockerfile*') }}
-        if: always()
+      - name: Save builder
+        run: docker save -o builder-image.tar builder
+        shell: bash
+
+      - name: Upload Runtime Image
+        run: |
+          mv builder-image.tar ${{ runner.workspace }}/builder-image.tar
+        shell: bash
 
   build:
     runs-on: ubuntu-latest
@@ -41,7 +41,6 @@ jobs:
     steps:
       - name: Check out the repo
         uses: actions/checkout@v4
-
 
       - name: Restore Docker Build Cache
         uses: actions/cache@v2
@@ -68,6 +67,14 @@ jobs:
             type=semver,pattern={{version}}${{ matrix.build }}
             type=semver,pattern={{major}}.{{minor}}${{ matrix.build }}
             type=sha,suffix=${{ matrix.build }}
+
+      - name: Download Build Image
+        run: mv ${{ runner.workspace }}/build-image.tar build-image.tar
+        shell: bash
+
+      - name: Load Build Image
+        run: docker load -i build-image.tar
+        shell: bash
 
       - name: Build the Docker image
         uses: docker/build-push-action@v2
