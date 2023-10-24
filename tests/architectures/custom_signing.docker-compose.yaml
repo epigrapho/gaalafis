@@ -1,6 +1,6 @@
 services:
   gitolite:
-    image: gaalafis:gitolite
+    image: gaalafis/gitolite:0.0.1
     environment:
       SSH_KEY_FILE: /run/secrets/admin-tester.pub
       SSH_KEY_NAME: admin-tester
@@ -16,8 +16,7 @@ services:
       - ./nginx/ssl:/etc/nginx/ssl
   
   lfs: 
-    image: gaalafis:lfs-server
-    entrypoint: /usr/local/bin/sbs_custom_signing
+    image: gaalafis/lfs-server:0.0.1-proxy-sbs
     environment:
       SBS_BUCKET_NAME: bucket
       SBS_ACCESS_KEY_FILE: /run/secrets/sbs_access_key

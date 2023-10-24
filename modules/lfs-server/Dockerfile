@@ -18,8 +18,17 @@ RUN cargo build --release --bin sbs_custom_signing_locks
 FROM ubuntu:22.04 AS runtime
 WORKDIR /app
 RUN apt-get update && apt-get install -y openssl
-COPY --from=builder /app/target/release/lfs-info-server /usr/local/bin
-COPY --from=builder /app/target/release/sbs_custom_signing /usr/local/bin
-COPY --from=builder /app/target/release/sbs_custom_signing_locks /usr/local/bin
 EXPOSE 3000
-ENTRYPOINT ["/usr/local/bin/lfs-info-server"]
+
+FROM runtime AS runtime_sbs_custom_signing
+COPY --from=builder /app/target/release/sbs_custom_signing /usr/local/bin/server
+ENTRYPOINT ["/usr/local/bin/server"]
+
+FROM runtime AS runtime_sbs_custom_signing_locks
+COPY --from=builder /app/target/release/sbs_custom_signing_locks /usr/local/bin/server
+ENTRYPOINT ["/usr/local/bin/server"]
+
+FROM runtime AS runtime_main
+COPY --from=builder /app/target/release/lfs-info-server /usr/local/bin/server
+ENTRYPOINT ["/usr/local/bin/server"]
+
