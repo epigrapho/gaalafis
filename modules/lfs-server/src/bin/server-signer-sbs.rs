@@ -18,6 +18,7 @@ use lfs_info_server::{
         services::Services,
         token_encoder_decoder::TokenEncoderDecoder,
     },
+    server::RouterExt,
 };
 
 /* -------------------------------------------------------------------------- */
@@ -96,7 +97,7 @@ async fn main() {
     // build our application with a route
     let app = Router::new()
         // `POST /objects/batch?repo=a/b/c`
-        .route("/objects/batch", post(post_objects_batch))
+        .directory_route("/objects/batch", post(post_objects_batch))
         // Error handling
         .layer(middleware::from_fn(handle_and_filter_error_details))
         .with_state(services);

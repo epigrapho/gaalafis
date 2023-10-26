@@ -17,6 +17,7 @@ use lfs_info_server::{
         minio::single_bucket_storage::MinioSingleBucketStorage,
     },
     traits::{file_storage::{FileStorageProxy, FileStorageMetaRequester, FileStorageLinkSigner}, services::Services, token_encoder_decoder::TokenEncoderDecoder},
+    server::RouterExt,
 };
 
 /* -------------------------------------------------------------------------- */
@@ -112,11 +113,11 @@ async fn main() {
     // build our application with a route
     let app = Router::new()
         // `POST /objects/batch?repo=a/b/c`
-        .route("/objects/batch", post(post_objects_batch))
+        .directory_route("/objects/batch", post(post_objects_batch))
         // `PUT /objects/access/<oid>?repo=a/b/c`
-        .route("/objects/access/:oid", put(upload_object))
+        .directory_route("/objects/access/:oid", put(upload_object))
         // `GET /objects/access/<oid>?repo=a/b/c`
-        .route("/objects/access/:oid", get(download_object))
+        .directory_route("/objects/access/:oid", get(download_object))
         // Error handling
         .layer(middleware::from_fn(handle_and_filter_error_details))
         .with_state(services);

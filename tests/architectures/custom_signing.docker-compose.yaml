@@ -2,6 +2,8 @@ services:
   gitolite:
     image: gaalafis/gitolite:0.0.1
     environment:
+      BASE_URL: https://proxy/
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
       SSH_KEY_FILE: /run/secrets/admin-tester.pub
       SSH_KEY_NAME: admin-tester
     secrets:

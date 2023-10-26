@@ -42,3 +42,5 @@ pub mod traits {
     pub mod services;
     pub mod locks;
 }
+
+pub mod server;

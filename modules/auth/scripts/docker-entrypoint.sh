@@ -1,5 +1,11 @@
 #!/bin/sh
 
+# If BASE_URL or JWT_SECRET_FILE are missing, exit
+if [ -z "$BASE_URL" ] || [ -z "$JWT_SECRET_FILE" ]; then
+  echo "You need to specify BASE_URL and JWT_SECRET_FILE"
+  exit 1
+fi
+
 # if command is sshd, set it up correctly
 if [ "${1}" = 'sshd' ]; then
   set -- /usr/sbin/sshd -D
@@ -63,6 +69,9 @@ fi
 # Copy the implementation files
 cp '/set-head.sh' '/var/lib/git/local/triggers/set-head.sh'
 cp '/git-lfs-authenticate' '/var/lib/git/local/commands/git-lfs-authenticate'
-cp '/.env' '/var/lib/git/local/commands/.env'
+
+# Write BASE_URL and JWT_SECRET to /var/lib/git/local/commands/.env
+echo "BASE_URL=$BASE_URL" > '/var/lib/git/local/commands/.env'
+echo "JWT_SECRET_FILE=$JWT_SECRET_FILE" >> '/var/lib/git/local/commands/.env'
 
 exec "$@"

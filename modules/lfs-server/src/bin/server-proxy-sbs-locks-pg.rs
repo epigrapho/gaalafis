@@ -24,6 +24,7 @@ use lfs_info_server::{
         services::Services,
         token_encoder_decoder::TokenEncoderDecoder,
     },
+    server::RouterExt,
 };
 
 /* -------------------------------------------------------------------------- */
@@ -120,25 +121,6 @@ impl Services for InjectedServices {
 /* -------------------------------------------------------------------------- */
 /*                                   Server                                   */
 /* -------------------------------------------------------------------------- */
-
-trait RouterExt<S, B>
-    where
-        B: HttpBody + Send + 'static,
-        S: Clone + Send + Sync + 'static,
-{
-    fn directory_route(self, path: &str, method_router: MethodRouter<S, B>) -> Self;
-}
-
-impl<S, B> RouterExt<S, B> for Router<S, B>
-    where
-        B: HttpBody + Send + 'static,
-        S: Clone + Send + Sync + 'static,
-{
-    fn directory_route(self, path: &str, method_router: MethodRouter<S, B>) -> Self {
-        self.route(path, method_router.clone())
-            .route(&format!("{path}/"), method_router)
-    }
-}
 
 #[tokio::main]
 async fn main() {
