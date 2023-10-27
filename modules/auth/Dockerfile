@@ -15,9 +15,7 @@ RUN cargo build --release --target x86_64-unknown-linux-musl --bin git-lfs-authe
 
 FROM alpine:3.10
 
-# Install gitolite (to add authorization layer over git)
-# Install openssh (to be able to clone over SSH)
-# Install apache (to serve lfs server)
+# Install gitolite (to add authorization layer over git) and openssh
 # Unlock automatically created user git
 RUN set -x && apk add --no-cache gitolite openssh && passwd -u git
 
@@ -41,7 +39,6 @@ ENTRYPOINT ["/docker-entrypoint.sh"]
 
 # Copy git-lfs-authenticate binary
 COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/git-lfs-authenticate /
-COPY .env /
 
 # Expose port 22 for SSH access
 EXPOSE 22

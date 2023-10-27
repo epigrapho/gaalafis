@@ -1,0 +1,40 @@
+name: Docker Image CI
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-auth:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Build the Docker image
+        uses: docker/build-push-action@v2
+        with:
+          context: ./modules/auth
+          file: ./modules/auth/Dockerfile
+          push: false
+
+  build-lfs-server:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        build: [proxy-sbs, proxy-sbs-locks-pg, signer-sbs, signer-sbs-locks-pg]
+
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Build the Docker image
+        uses: docker/build-push-action@v2
+        with:
+          context: ./modules/lfs-server
+          file: ./modules/lfs-server/Dockerfile.prod
+          build-args: binary=${{ matrix.build }}
+          push: false

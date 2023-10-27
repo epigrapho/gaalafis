@@ -2,6 +2,8 @@ services:
   gitolite:
     image: gaalafis/gitolite:0.0.1
     environment:
+      BASE_URL: https://proxy/
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
       SSH_KEY_FILE: /run/secrets/admin-tester.pub
       SSH_KEY_NAME: admin-tester
     secrets:
@@ -16,7 +18,7 @@ services:
       - ./nginx/ssl:/etc/nginx/ssl
   
   lfs: 
-    image: gaalafis/lfs-server:0.0.1-signer-sbs-locks
+    image: gaalafis/lfs-server:0.0.1-signer-sbs-locks-pg
     environment:
       SBS_BUCKET_NAME: bucket
       SBS_ACCESS_KEY_FILE: /run/secrets/sbs_access_key
