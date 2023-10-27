@@ -2,8 +2,6 @@ name: Docker Image CI
 
 on:
   push:
-    branches:
-      - main
     tags:
       - 'v*'
 
@@ -14,6 +12,10 @@ jobs:
     steps:
       - name: Check out the repo
         uses: actions/checkout@v4
+
+      - name: Exit if not on main branch
+        if: endsWith(github.ref, 'main') == false
+        run: exit -1
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
@@ -50,6 +52,10 @@ jobs:
     steps:
       - name: Check out the repo
         uses: actions/checkout@v4
+
+      - name: Exit if not on main branch
+        if: endsWith(github.ref, 'main') == false
+        run: exit -1
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
