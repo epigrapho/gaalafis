@@ -56,15 +56,6 @@ impl InjectedServices {
             None,
         )
             .unwrap();
-        let public_sbs_region = std::env::var("SBS_PUBLIC_REGION");
-        let public_sbs_host = std::env::var("SBS_PUBLIC_HOST");
-        let public_region = match (public_sbs_region, public_sbs_host) {
-            (Ok(region), Ok(host)) => Some(Region::Custom {
-                region,
-                endpoint: host,
-            }),
-            _ => None,
-        };
         let region = Region::from_env("SBS_REGION", Some("SBS_HOST")).unwrap();
 
         // Jwt
@@ -78,7 +69,7 @@ impl InjectedServices {
         );
 
         InjectedServices {
-            fs: MinioSingleBucketStorage::new(bucket_name, credentials, region, public_region),
+            fs: MinioSingleBucketStorage::new(bucket_name, credentials, region, None),
             token_encoder_decoder: jwt_token_encoder_decoder,
             signer: CustomLinkSigner::from_env_var(
                 "CUSTOM_SIGNER_HOST",
