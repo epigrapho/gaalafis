@@ -1,17 +1,23 @@
-use axum::{middleware, routing::post, Router};
-use s3::{creds::Credentials, Region};
+use axum::{
+    middleware,
+    routing::{get, post, put},
+    Router,
+};
 use std::net::SocketAddr;
 use std::sync::Arc;
 
 use lfs_info_server::{
-    controllers::{errors::handle_and_filter_error_details, objects::batch::post_objects_batch},
+    controllers::{
+        errors::handle_and_filter_error_details,
+        objects::{batch::post_objects_batch, download::download_object, upload::upload_object},
+    },
     server::RouterExt,
     services::{
+        custom_link_signer::CustomLinkSigner, fs::local_file_storage::LocalFileStorage,
         jwt_token_encoder_decoder::JwtTokenEncoderDecoder,
-        minio::single_bucket_storage::MinioSingleBucketStorage,
     },
     traits::{
-        file_storage::{FileStorageLinkSigner, FileStorageMetaRequester},
+        file_storage::{FileStorageLinkSigner, FileStorageMetaRequester, FileStorageProxy},
         services::Services,
         token_encoder_decoder::TokenEncoderDecoder,
     },
@@ -22,43 +28,33 @@ use lfs_info_server::{
 /* -------------------------------------------------------------------------- */
 
 pub struct InjectedServices {
-    fs: MinioSingleBucketStorage,
+    fs: LocalFileStorage,
     token_encoder_decoder: JwtTokenEncoderDecoder,
+    signer: CustomLinkSigner<JwtTokenEncoderDecoder>,
+}
+
+impl Default for InjectedServices {
+    fn default() -> Self {
+        InjectedServices::new()
+    }
 }
 
 impl InjectedServices {
-    fn load_env_var_from_file(key: &str) -> String {
-        let path = std::env::var(key).unwrap();
-        let file = std::fs::read_to_string(path).unwrap();
-        return file.trim().to_string();
-    }
-
     pub fn new() -> InjectedServices {
-        // Bucket
-        let bucket_name = std::env::var("SBS_BUCKET_NAME").unwrap();
-        let credentials = Credentials::new(
-            Some(&Self::load_env_var_from_file("SBS_ACCESS_KEY_FILE")),
-            Some(&Self::load_env_var_from_file("SBS_SECRET_KEY_FILE")),
-            None,
-            None,
-            None,
-        )
-        .unwrap();
-        let public_sbs_region = std::env::var("SBS_PUBLIC_REGION");
-        let public_sbs_host = std::env::var("SBS_PUBLIC_HOST");
-        let public_region = match (public_sbs_region, public_sbs_host) {
-            (Ok(region), Ok(host)) => Some(Region::Custom {
-                region,
-                endpoint: host,
-            }),
-            _ => None,
-        };
-        let region = Region::from_env("SBS_REGION", Some("SBS_HOST")).unwrap();
+        let root_path = std::env::var("FS_ROOT_PATH").unwrap();
+        let jwt_token_encoder_decoder =
+            JwtTokenEncoderDecoder::from_file_env_var("JWT_SECRET_FILE", "JWT_EXPIRES_IN");
+        let link_token_encoder_decoder = JwtTokenEncoderDecoder::from_file_env_var(
+            "CUSTOM_SIGNER_SECRET_FILE",
+            "CUSTOM_SIGNER_EXPIRES_IN",
+        );
+
         InjectedServices {
-            fs: MinioSingleBucketStorage::new(bucket_name, credentials, region, public_region),
-            token_encoder_decoder: JwtTokenEncoderDecoder::from_file_env_var(
-                "JWT_SECRET_FILE",
-                "JWT_EXPIRES_IN",
+            fs: LocalFileStorage::new(root_path),
+            token_encoder_decoder: jwt_token_encoder_decoder,
+            signer: CustomLinkSigner::from_env_var(
+                "CUSTOM_SIGNER_HOST",
+                link_token_encoder_decoder,
             ),
         }
     }
@@ -70,11 +66,15 @@ impl Services for InjectedServices {
     }
 
     fn file_storage_link_signer(&self) -> &(dyn FileStorageLinkSigner + 'static) {
-        &self.fs
+        &self.signer
     }
 
     fn token_encoder_decoder(&self) -> &(dyn TokenEncoderDecoder + 'static) {
         &self.token_encoder_decoder
+    }
+
+    fn file_storage_proxy(&self) -> Option<&(dyn FileStorageProxy + 'static)> {
+        Some(&self.fs)
     }
 }
 
@@ -88,12 +88,16 @@ async fn main() {
     tracing_subscriber::fmt::init();
 
     // Bundle services
-    let services: Arc<dyn Services + Send + Sync> = Arc::new(InjectedServices::new());
+    let services: Arc<dyn Services + Send + Sync + 'static> = Arc::new(InjectedServices::new());
 
     // build our application with a route
     let app = Router::new()
         // `POST /objects/batch?repo=a/b/c`
         .directory_route("/objects/batch", post(post_objects_batch))
+        // `PUT /objects/access/<oid>?repo=a/b/c`
+        .directory_route("/objects/access/:oid", put(upload_object))
+        // `GET /objects/access/<oid>?repo=a/b/c`
+        .directory_route("/objects/access/:oid", get(download_object))
         // Error handling
         .layer(middleware::from_fn(handle_and_filter_error_details))
         .with_state(services);

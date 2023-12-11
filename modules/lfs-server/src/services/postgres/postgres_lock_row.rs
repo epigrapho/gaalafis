@@ -1,7 +1,7 @@
+use crate::api::locks::response::LockOwner;
 use std::fmt;
 use std::time::SystemTime;
 use tokio_postgres::{row::RowIndex, types::FromSql, Row};
-use crate::api::locks::response::LockOwner;
 
 use crate::traits::locks::{Lock, LocksProviderError};
 

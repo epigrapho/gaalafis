@@ -34,6 +34,22 @@ impl FileStorageMetaResult<'_> {
 #[async_trait]
 pub trait FileStorageMetaRequester: Sync + Send {
     async fn get_meta_result<'a>(&self, repo: &'a str, oid: &'a str) -> FileStorageMetaResult<'a>;
+
+    fn match_size<'a>(
+        &self,
+        size: Option<u64>,
+        repo: &'a str,
+        oid: &'a str,
+    ) -> FileStorageMetaResult<'a> {
+        size.map_or(FileStorageMetaResult::not_found(repo, oid), |s| {
+            FileStorageMetaResult {
+                repo,
+                oid,
+                exists: true,
+                size: s,
+            }
+        })
+    }
 }
 
 #[async_trait]
@@ -58,7 +74,11 @@ pub trait FileStorageLinkSigner: Sync + Send {
 
 #[async_trait]
 pub trait FileStorageProxy: Sync + Send {
-    async fn get(&self, repo: &str, oid: &str) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>>;
+    async fn get(
+        &self,
+        repo: &str,
+        oid: &str,
+    ) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>>;
     async fn post(
         &self,
         repo: &str,

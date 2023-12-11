@@ -10,14 +10,18 @@ use std::sync::Arc;
 use lfs_info_server::{
     controllers::{
         errors::handle_and_filter_error_details,
-        objects::{batch::post_objects_batch, upload::upload_object, download::download_object},
+        objects::{batch::post_objects_batch, download::download_object, upload::upload_object},
     },
+    server::RouterExt,
     services::{
         custom_link_signer::CustomLinkSigner, jwt_token_encoder_decoder::JwtTokenEncoderDecoder,
         minio::single_bucket_storage::MinioSingleBucketStorage,
     },
-    traits::{file_storage::{FileStorageProxy, FileStorageMetaRequester, FileStorageLinkSigner}, services::Services, token_encoder_decoder::TokenEncoderDecoder},
-    server::RouterExt,
+    traits::{
+        file_storage::{FileStorageLinkSigner, FileStorageMetaRequester, FileStorageProxy},
+        services::Services,
+        token_encoder_decoder::TokenEncoderDecoder,
+    },
 };
 
 /* -------------------------------------------------------------------------- */
@@ -56,12 +60,7 @@ impl InjectedServices {
         );
 
         InjectedServices {
-            fs: MinioSingleBucketStorage::new(
-                bucket_name,
-                credentials,
-                region,
-                None,
-            ),
+            fs: MinioSingleBucketStorage::new(bucket_name, credentials, region, None),
             token_encoder_decoder: jwt_token_encoder_decoder,
             signer: CustomLinkSigner::from_env_var(
                 "CUSTOM_SIGNER_HOST",

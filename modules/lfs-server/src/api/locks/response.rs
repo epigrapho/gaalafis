@@ -1,6 +1,6 @@
-use std::time::SystemTime;
 use chrono::{DateTime, SecondsFormat, Utc};
 use serde::Serialize;
+use std::time::SystemTime;
 
 #[derive(Serialize)]
 pub struct LockOwner {
@@ -13,7 +13,7 @@ pub struct Lock {
     path: String,
     #[serde(serialize_with = "iso_8601")]
     locked_at: SystemTime,
-    owner: LockOwner
+    owner: LockOwner,
 }
 
 impl Lock {
@@ -22,9 +22,7 @@ impl Lock {
             id,
             path,
             locked_at,
-            owner: LockOwner {
-                name: owner_name,
-            }
+            owner: LockOwner { name: owner_name },
         }
     }
     pub fn is_owner(&self, user: &str) -> bool {
@@ -41,10 +39,16 @@ pub struct CreateLockResponse {
 
 impl CreateLockResponse {
     pub fn new(lock: Lock) -> Self {
-        CreateLockResponse { lock, message: None }
+        CreateLockResponse {
+            lock,
+            message: None,
+        }
     }
     pub fn with_message(lock: Lock, message: String) -> Self {
-        CreateLockResponse { lock, message: Some(message) }
+        CreateLockResponse {
+            lock,
+            message: Some(message),
+        }
     }
 }
 
@@ -71,7 +75,11 @@ pub struct ListLocksForVerificationResponse {
 
 impl ListLocksForVerificationResponse {
     pub fn new(ours: Vec<Lock>, theirs: Vec<Lock>, next_cursor: Option<String>) -> Self {
-        ListLocksForVerificationResponse { ours, theirs, next_cursor }
+        ListLocksForVerificationResponse {
+            ours,
+            theirs,
+            next_cursor,
+        }
     }
 }
 
@@ -80,7 +88,6 @@ pub struct DeleteLockResponse {
     lock: Lock,
 }
 
-
 impl DeleteLockResponse {
     pub fn new(lock: Lock) -> Self {
         DeleteLockResponse { lock }
@@ -88,11 +95,10 @@ impl DeleteLockResponse {
 }
 
 pub fn iso_8601<S>(st: &SystemTime, s: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
+where
+    S: serde::Serializer,
 {
     let dt: DateTime<Utc> = (*st).into();
     let serialized = dt.to_rfc3339_opts(SecondsFormat::Secs, false);
     s.serialize_str(&serialized)
 }
-

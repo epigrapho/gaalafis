@@ -1,6 +1,8 @@
-use axum::routing::{get, put};
-use axum::{middleware, routing::post, Router};
-use s3::{creds::Credentials, Region};
+use axum::{
+    middleware,
+    routing::{get, post, put},
+    Router,
+};
 use std::net::SocketAddr;
 use std::sync::Arc;
 
@@ -12,8 +14,8 @@ use lfs_info_server::{
     },
     server::RouterExt,
     services::{
-        custom_link_signer::CustomLinkSigner, jwt_token_encoder_decoder::JwtTokenEncoderDecoder,
-        minio::single_bucket_storage::MinioSingleBucketStorage,
+        custom_link_signer::CustomLinkSigner, fs::local_file_storage::LocalFileStorage,
+        jwt_token_encoder_decoder::JwtTokenEncoderDecoder,
         postgres::postgres_locks_provider::PostgresLocksProvider,
     },
     traits::{
@@ -29,44 +31,24 @@ use lfs_info_server::{
 /* -------------------------------------------------------------------------- */
 
 pub struct InjectedServices {
-    fs: MinioSingleBucketStorage,
+    fs: LocalFileStorage,
     token_encoder_decoder: JwtTokenEncoderDecoder,
-    locks_provider: Option<PostgresLocksProvider>,
     signer: CustomLinkSigner<JwtTokenEncoderDecoder>,
+    locks_provider: Option<PostgresLocksProvider>,
 }
 
 impl InjectedServices {
-    fn load_env_var_from_file(key: &str) -> String {
-        let path = std::env::var(key).unwrap();
-        let file = std::fs::read_to_string(path).unwrap();
-        return file.trim().to_string();
-    }
-
     pub fn new() -> InjectedServices {
-        // Bucket
-        let bucket_name = std::env::var("SBS_BUCKET_NAME").unwrap();
-        let credentials = Credentials::new(
-            Some(&Self::load_env_var_from_file("SBS_ACCESS_KEY_FILE")),
-            Some(&Self::load_env_var_from_file("SBS_SECRET_KEY_FILE")),
-            None,
-            None,
-            None,
-        )
-        .unwrap();
-        let region = Region::from_env("SBS_REGION", Some("SBS_HOST")).unwrap();
-
-        // Jwt
+        let root_path = std::env::var("FS_ROOT_PATH").unwrap();
         let jwt_token_encoder_decoder =
             JwtTokenEncoderDecoder::from_file_env_var("JWT_SECRET_FILE", "JWT_EXPIRES_IN");
-
-        // Link signer
         let link_token_encoder_decoder = JwtTokenEncoderDecoder::from_file_env_var(
             "CUSTOM_SIGNER_SECRET_FILE",
             "CUSTOM_SIGNER_EXPIRES_IN",
         );
 
         InjectedServices {
-            fs: MinioSingleBucketStorage::new(bucket_name, credentials, region, None),
+            fs: LocalFileStorage::new(root_path),
             token_encoder_decoder: jwt_token_encoder_decoder,
             signer: CustomLinkSigner::from_env_var(
                 "CUSTOM_SIGNER_HOST",
@@ -116,7 +98,7 @@ async fn main() {
     tracing_subscriber::fmt::init();
 
     // Bundle services
-    let services: Arc<dyn Services + Send + Sync> = Arc::new(InjectedServices::new());
+    let services: Arc<dyn Services + Send + Sync + 'static> = Arc::new(InjectedServices::new());
 
     // build our application with a route
     let app = Router::new()

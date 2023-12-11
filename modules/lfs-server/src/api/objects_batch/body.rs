@@ -2,7 +2,7 @@ use axum::http::StatusCode;
 use serde::Deserialize;
 
 use crate::api::{
-    enums::{from_hash_algo_string, from_transfer_string, HashAlgorithm, Transfer, Operation},
+    enums::{from_hash_algo_string, from_transfer_string, HashAlgorithm, Operation, Transfer},
     jwt::RepoTokenPayload,
 };
 
@@ -210,21 +210,24 @@ mod test {
     fn deserialize_objects_batch_request_payload() {
         let serialized = "{\"operation\":\"download\",\"transfers\":[\"basic\"],\"objects\":[{\"oid\":\"oid1\",\"size\":1},{\"oid\":\"oid2\",\"size\":2}],\"hash_algo\":\"sha256\"}";
         let deserialized: ObjectsBatchRequestPayload = serde_json::from_str(serialized).unwrap();
-        assert_eq!(deserialized, ObjectsBatchRequestPayload {
-            operation: Operation::Download,
-            transfers: Some(vec![Transfer::Basic]),
-            objects: vec![
-                crate::api::objects_batch::body::ObjectIdentity {
-                    oid: "oid1".to_string(),
-                    size: 1,
-                },
-                crate::api::objects_batch::body::ObjectIdentity {
-                    oid: "oid2".to_string(),
-                    size: 2,
-                },
-            ],
-            hash_algo: HashAlgorithm::Sha256,
-        });
+        assert_eq!(
+            deserialized,
+            ObjectsBatchRequestPayload {
+                operation: Operation::Download,
+                transfers: Some(vec![Transfer::Basic]),
+                objects: vec![
+                    crate::api::objects_batch::body::ObjectIdentity {
+                        oid: "oid1".to_string(),
+                        size: 1,
+                    },
+                    crate::api::objects_batch::body::ObjectIdentity {
+                        oid: "oid2".to_string(),
+                        size: 2,
+                    },
+                ],
+                hash_algo: HashAlgorithm::Sha256,
+            }
+        );
     }
 
     #[test]
@@ -238,36 +241,45 @@ mod test {
     fn deserialize_unknown_transfer() {
         let serialized = "{\"operation\":\"download\",\"transfers\":[\"foo\"],\"objects\":[],\"hash_algo\":\"sha256\"}";
         let deserialized: ObjectsBatchRequestPayload = serde_json::from_str(serialized).unwrap();
-        assert_eq!(deserialized, ObjectsBatchRequestPayload {
-            operation: Operation::Download,
-            transfers: Some(vec![Transfer::Unknown]),
-            objects: vec![],
-            hash_algo: HashAlgorithm::Sha256,
-        });
+        assert_eq!(
+            deserialized,
+            ObjectsBatchRequestPayload {
+                operation: Operation::Download,
+                transfers: Some(vec![Transfer::Unknown]),
+                objects: vec![],
+                hash_algo: HashAlgorithm::Sha256,
+            }
+        );
     }
 
     #[test]
     fn deserialize_unknown_hash_algo() {
         let serialized = "{\"operation\":\"download\",\"transfers\":[\"basic\"],\"objects\":[],\"hash_algo\":\"foo\"}";
         let deserialized: ObjectsBatchRequestPayload = serde_json::from_str(serialized).unwrap();
-        assert_eq!(deserialized, ObjectsBatchRequestPayload {
-            operation: Operation::Download,
-            transfers: Some(vec![Transfer::Basic]),
-            objects: vec![],
-            hash_algo: HashAlgorithm::Unknown,
-        });
+        assert_eq!(
+            deserialized,
+            ObjectsBatchRequestPayload {
+                operation: Operation::Download,
+                transfers: Some(vec![Transfer::Basic]),
+                objects: vec![],
+                hash_algo: HashAlgorithm::Unknown,
+            }
+        );
     }
 
-    #[test] 
+    #[test]
     fn deserialize_no_transfer() {
         let serialized = "{\"operation\":\"download\",\"objects\":[],\"hash_algo\":\"sha256\"}";
         let deserialized: ObjectsBatchRequestPayload = serde_json::from_str(serialized).unwrap();
-        assert_eq!(deserialized, ObjectsBatchRequestPayload {
-            operation: Operation::Download,
-            transfers: None,
-            objects: vec![],
-            hash_algo: HashAlgorithm::Sha256,
-        });
+        assert_eq!(
+            deserialized,
+            ObjectsBatchRequestPayload {
+                operation: Operation::Download,
+                transfers: None,
+                objects: vec![],
+                hash_algo: HashAlgorithm::Sha256,
+            }
+        );
     }
 
     #[test]

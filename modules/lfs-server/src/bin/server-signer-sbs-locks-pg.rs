@@ -1,5 +1,8 @@
-use axum::routing::get;
-use axum::{middleware, routing::post, Router};
+use axum::{
+    middleware,
+    routing::{get, post},
+    Router,
+};
 use s3::{creds::Credentials, Region};
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -10,6 +13,7 @@ use lfs_info_server::{
         locks::{list_locks, list_locks_for_verification, post_lock, unlock},
         objects::batch::post_objects_batch,
     },
+    server::RouterExt,
     services::{
         jwt_token_encoder_decoder::JwtTokenEncoderDecoder,
         minio::single_bucket_storage::MinioSingleBucketStorage,
@@ -21,7 +25,6 @@ use lfs_info_server::{
         services::Services,
         token_encoder_decoder::TokenEncoderDecoder,
     },
-    server::RouterExt,
 };
 
 /* -------------------------------------------------------------------------- */

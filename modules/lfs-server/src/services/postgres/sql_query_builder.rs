@@ -70,7 +70,14 @@ impl SqlQueryBuilder {
         Ok(self)
     }
 
-    pub fn limit(&mut self, limit: Option<u64>, default: u64, overflow: i64, min: u64, max: u64) -> Result<&mut Self, Box<dyn std::error::Error>> {
+    pub fn limit(
+        &mut self,
+        limit: Option<u64>,
+        default: u64,
+        overflow: i64,
+        min: u64,
+        max: u64,
+    ) -> Result<&mut Self, Box<dyn std::error::Error>> {
         let mut limit = limit.unwrap_or(default);
         if limit < min {
             limit = min

@@ -101,8 +101,8 @@ mod tests {
                 ("repo".to_string(), "my-repo".to_string()),
                 ("user".to_string(), "John Doe".to_string()),
             ]
-                .into_iter()
-                .collect(),
+            .into_iter()
+            .collect(),
         );
         let err = super::RepoTokenPayload::new(&token).unwrap_err();
         assert_eq!(err.0, axum::http::StatusCode::UNAUTHORIZED);

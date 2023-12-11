@@ -70,27 +70,15 @@ impl FileStorageMetaRequester for MinioSingleBucketStorage {
     async fn get_meta_result<'a>(&self, repo: &'a str, oid: &'a str) -> FileStorageMetaResult<'a> {
         let s3_path = self.get_object_path(repo, oid);
         let meta = self.bucket_direct_access.head_object(s3_path).await;
-        let size = match meta {
-            Ok(meta) => meta.0.content_length,
-            Err(_e) => {
-                return FileStorageMetaResult::not_found(repo, oid);
-            }
-        };
 
-        if let Some(sized) = size {
-            return FileStorageMetaResult {
-                repo,
-                oid,
-                exists: true,
-                size: if sized > 0 {
-                    sized.try_into().unwrap()
-                } else {
-                    0
-                },
-            };
-        } else {
-            return FileStorageMetaResult::not_found(repo, oid);
-        }
+        let size = meta
+            .map(|m| {
+                m.0.content_length
+                    .map(|c| u64::try_from(c).map_or(None, Some))
+            })
+            .unwrap_or(None)
+            .flatten();
+        return self.match_size(size, repo, oid);
     }
 }
 
@@ -137,7 +125,11 @@ impl FileStorageLinkSigner for MinioSingleBucketStorage {
 
 #[async_trait]
 impl FileStorageProxy for MinioSingleBucketStorage {
-    async fn get(&self, repo: &str, oid: &str) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
+    async fn get(
+        &self,
+        repo: &str,
+        oid: &str,
+    ) -> Result<(Vec<u8>, String), Box<dyn std::error::Error>> {
         let s3_path = self.get_object_path(repo, oid);
         let response = self.bucket_direct_access.get_object(s3_path).await?;
         let content_type = response

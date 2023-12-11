@@ -76,22 +76,36 @@ mod tests {
 
     #[derive(Deserialize, Serialize, Debug, PartialEq)]
     struct TestHoldingTransfers {
-        #[serde(deserialize_with = "from_transfer_string", skip_serializing_if = "Option::is_none", default)]
+        #[serde(
+            deserialize_with = "from_transfer_string",
+            skip_serializing_if = "Option::is_none",
+            default
+        )]
         transfers: Option<Vec<Transfer>>,
     }
-    
+
     #[test]
     fn test_deserialize_transfer_basic() {
         let json = "{\"transfers\":[\"basic\"]}";
         let transfer: TestHoldingTransfers = serde_json::from_str(json).unwrap();
-        assert_eq!(transfer, TestHoldingTransfers { transfers: Some(vec![Transfer::Basic]) });
+        assert_eq!(
+            transfer,
+            TestHoldingTransfers {
+                transfers: Some(vec![Transfer::Basic])
+            }
+        );
     }
 
     #[test]
     fn test_deserialize_transfer_unknown() {
         let json = "{\"transfers\":[\"foo\"]}";
         let transfer: TestHoldingTransfers = serde_json::from_str(json).unwrap();
-        assert_eq!(transfer, TestHoldingTransfers { transfers: Some(vec![Transfer::Unknown]) });
+        assert_eq!(
+            transfer,
+            TestHoldingTransfers {
+                transfers: Some(vec![Transfer::Unknown])
+            }
+        );
     }
 
     #[test]
@@ -103,14 +117,18 @@ mod tests {
 
     #[test]
     fn test_serialize_transfer_basic() {
-        let transfers = TestHoldingTransfers { transfers: Some(vec![Transfer::Basic]) };
+        let transfers = TestHoldingTransfers {
+            transfers: Some(vec![Transfer::Basic]),
+        };
         let json = serde_json::to_string(&transfers).unwrap();
         assert_eq!(json, "{\"transfers\":[\"basic\"]}");
     }
 
     #[test]
     fn test_serialize_transfer_unknown() {
-        let transfers = TestHoldingTransfers { transfers: Some(vec![Transfer::Unknown]) };
+        let transfers = TestHoldingTransfers {
+            transfers: Some(vec![Transfer::Unknown]),
+        };
         let json = serde_json::to_string(&transfers).unwrap();
         assert_eq!(json, "{\"transfers\":[\"unknown\"]}");
     }
@@ -130,28 +148,42 @@ mod tests {
 
     #[test]
     fn test_deserialize_hash_algo_sha256() {
-        let json= "{\"hash_algo\":\"sha256\"}";
+        let json = "{\"hash_algo\":\"sha256\"}";
         let hash_algo: TestHoldingHashAlgo = serde_json::from_str(json).unwrap();
-        assert_eq!(hash_algo, TestHoldingHashAlgo { hash_algo: HashAlgorithm::Sha256 });
+        assert_eq!(
+            hash_algo,
+            TestHoldingHashAlgo {
+                hash_algo: HashAlgorithm::Sha256
+            }
+        );
     }
 
     #[test]
     fn test_deserialize_hash_algo_unknown() {
-        let json= "{\"hash_algo\":\"foo\"}";
+        let json = "{\"hash_algo\":\"foo\"}";
         let hash_algo: TestHoldingHashAlgo = serde_json::from_str(json).unwrap();
-        assert_eq!(hash_algo, TestHoldingHashAlgo { hash_algo: HashAlgorithm::Unknown });
+        assert_eq!(
+            hash_algo,
+            TestHoldingHashAlgo {
+                hash_algo: HashAlgorithm::Unknown
+            }
+        );
     }
 
     #[test]
     fn test_serialize_hash_algo_sha256() {
-        let hash_algo = TestHoldingHashAlgo { hash_algo: HashAlgorithm::Sha256 };
+        let hash_algo = TestHoldingHashAlgo {
+            hash_algo: HashAlgorithm::Sha256,
+        };
         let json = serde_json::to_string(&hash_algo).unwrap();
         assert_eq!(json, "{\"hash_algo\":\"sha256\"}");
     }
 
     #[test]
     fn test_serialize_hash_algo_unknown() {
-        let hash_algo = TestHoldingHashAlgo { hash_algo: HashAlgorithm::Unknown };
+        let hash_algo = TestHoldingHashAlgo {
+            hash_algo: HashAlgorithm::Unknown,
+        };
         let json = serde_json::to_string(&hash_algo).unwrap();
         assert_eq!(json, "{\"hash_algo\":\"unknown\"}");
     }

@@ -27,10 +27,7 @@ struct ErrorBuilder<'a> {
 
 impl<'a> ErrorBuilder<'a> {
     fn new(status: &'a StatusCode, message: &'a Option<String>) -> Self {
-        Self {
-            status,
-            message,
-        }
+        Self { status, message }
     }
 
     fn error(&self, message: &str) -> Result<Response, Response> {

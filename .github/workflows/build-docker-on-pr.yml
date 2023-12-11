@@ -25,7 +25,7 @@ jobs:
 
     strategy:
       matrix:
-        build: [proxy-sbs, proxy-sbs-locks-pg, signer-sbs, signer-sbs-locks-pg]
+        build: [proxy-sbs, proxy-sbs-locks-pg, signer-sbs, signer-sbs-locks-pg, proxy-fs, proxy-fs-locks-pg]
 
     steps:
       - name: Check out the repo

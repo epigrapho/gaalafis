@@ -3,7 +3,7 @@ use serde::Deserialize;
 /// A reference to a git pointer. Not used yet. Might be specified in the body
 #[derive(Deserialize)]
 pub struct Ref {
-    pub name: String
+    pub name: String,
 }
 
 #[derive(Deserialize)]
@@ -36,4 +36,3 @@ pub struct DeleteLockPayload {
     pub force: Option<bool>,
     pub ref_: Option<Ref>,
 }
-

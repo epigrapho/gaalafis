@@ -28,13 +28,12 @@ pub async fn upload_object(
     let content_type = headers
         .get("content-type")
         .map(|v| {
-            v.to_str()
-                .map_err(|_| {
-                    (
-                        StatusCode::BAD_REQUEST,
-                        String::from("Invalid content type"),
-                    )
-                })
+            v.to_str().map_err(|_| {
+                (
+                    StatusCode::BAD_REQUEST,
+                    String::from("Invalid content type"),
+                )
+            })
         })
         .unwrap_or(Ok("application/octet-stream"))?;
 
