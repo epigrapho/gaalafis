@@ -8,13 +8,13 @@ use crate::api::locks::response::{
 };
 use crate::api::repo_query::QueryRepo;
 use crate::services::jwt::Jwt;
+use crate::traits;
 use crate::traits::locks::{LocksProvider, LocksProviderError};
 use crate::traits::services::Services;
 use axum::extract::{Path, Query, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::Json;
 use std::sync::Arc;
-use crate::traits;
 
 fn verify_lock_jwt(
     repo: &str,
@@ -89,7 +89,7 @@ async fn list_locks_helper(
     id: Option<&str>,
     (limit, cursor): (Option<&str>, Option<&str>),
     _ref_name: Option<&str>, // Specification prohibit the use of ref name to filter
-) -> Result<(String, Option<String>, Vec<traits::locks::Lock>), (StatusCode, String)>{
+) -> Result<(String, Option<String>, Vec<traits::locks::Lock>), (StatusCode, String)> {
     // 1) Preparation
     let user = verify_lock_jwt(repo, headers, services, false)?;
     let locks_provider = get_locks_provider(services)?;
@@ -101,8 +101,7 @@ async fn list_locks_helper(
             path.filter(|s| !s.is_empty()),
             id.filter(|s| !s.is_empty()),
             cursor.filter(|s| !s.is_empty()),
-            limit
-                .map(|q| q.parse::<u64>().unwrap_or(100)),
+            limit.map(|q| q.parse::<u64>().unwrap_or(100)),
             None,
         )
         .await
@@ -123,7 +122,8 @@ pub async fn list_locks(
         query.id.as_deref(),
         (query.limit.as_deref(), query.cursor.as_deref()),
         query.refspec.as_deref(),
-    ).await?;
+    )
+    .await?;
 
     let response_locks: Vec<Lock> = locks
         .into_iter()
@@ -148,10 +148,12 @@ pub async fn list_locks_for_verification(
         None,
         (payload.limit.as_deref(), payload.cursor.as_deref()),
         payload.ref_.map(|r| r.name).as_deref(),
-    ).await?;
+    )
+    .await?;
 
     // 2) Separate locks between ours and theirs
-    let (ours, theirs) = locks.into_iter()
+    let (ours, theirs) = locks
+        .into_iter()
         .map(|lock| Lock::new(lock.id, lock.path, lock.locked_at, lock.owner.name))
         .partition(|l| l.is_owner(&user));
 

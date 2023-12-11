@@ -2,5 +2,7 @@
     "default": [1, 2, 3, 4, 5],
     "minio_behind_proxy": [6, 7, 8],
     "custom_signing": [9, 7],
-    "locks": [10, 11, 12, 13]
+    "locks": [10, 11, 12, 13],
+    "server-proxy-fs": [9, 7],
+    "server-proxy-fs-locks-pg": [9, 7, 10, 11, 12, 13]
 }

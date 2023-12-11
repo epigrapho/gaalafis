@@ -1,0 +1,79 @@
+services:
+  gitolite:
+    image: gaalafis/gitolite:0.0.1
+    environment:
+      BASE_URL: https://proxy/
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
+      SSH_KEY_FILE: /run/secrets/admin-tester.pub
+      SSH_KEY_NAME: admin-tester
+    secrets:
+      - admin-tester.pub
+      - jwt_secret
+
+  proxy: 
+    image: gaalafis:nginx-no-bucket
+    depends_on:
+      - lfs
+    volumes:
+      - ./nginx/ssl:/etc/nginx/ssl
+  
+  lfs: 
+    image: gaalafis/lfs-server:0.0.1-proxy-fs-locks-pg
+    environment:
+      FS_ROOT_PATH: /tmp/
+      CUSTOM_SIGNER_SECRET_FILE: /run/secrets/jwt_secret
+      CUSTOM_SIGNER_HOST: https://proxy
+      CUSTOM_SIGNER_EXPIRES_IN: 3600
+      RUST_BACKTRACE: 1
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
+      JWT_EXPIRES_IN: 3600
+      DATABASE_HOST: database
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD_FILE: /run/secrets/db_password
+      DATABASE_NAME: test_locks_db
+    depends_on:
+      - database
+    secrets:
+      - sbs_access_key
+      - sbs_secret_key
+      - jwt_secret
+      - db_password
+
+  database:
+    image: postgres:15.0
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+      POSTGRES_DB: test_locks_db
+    ports:
+      - 5432:5432
+    secrets:
+      - db_password
+    volumes:
+      - ./postgres:/docker-entrypoint-initdb.d
+
+  tester_client: 
+    image: gaalafis:tester_client
+    command: tail -f /dev/null
+    depends_on:
+      - gitolite
+      - lfs
+      - proxy
+    volumes:
+      - ../tests:/root/tests
+      - ../runner/ssh:/root/.ssh
+
+secrets:
+  admin-tester.pub:
+    file: ../runner/ssh/id_rsa.pub
+  jwt_secret:
+    file: ./secrets/jwt_secret
+  sbs_access_key:
+    file: ./secrets/sbs_access_key
+  sbs_secret_key:
+    file: ./secrets/sbs_secret_key
+  db_password:
+    file: ./secrets/db_password  
+  
+volumes: 
+  minio:

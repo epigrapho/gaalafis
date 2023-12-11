@@ -10,7 +10,7 @@ A reference architecture to serve git and git-lfs repositories with per-reposito
 - [x] LFS objects storages
     - [x] LFS single S3 bucket storage backend
     - [ ] LFS multi S3 buckets storage backend
-    - [ ] Local filesystem storage backend
+    - [x] Local filesystem storage backend
 - [x] LFS locks (opt in)
 - [x] Locks storage
     - [x] Postgres locks storage

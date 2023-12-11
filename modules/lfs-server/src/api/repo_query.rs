@@ -22,7 +22,6 @@ impl QueryRepo {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;

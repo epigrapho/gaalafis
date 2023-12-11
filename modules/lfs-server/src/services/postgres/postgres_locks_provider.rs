@@ -43,7 +43,10 @@ impl PostgresLocksProvider {
         let file_name = Self::try_get_env_var(var_name)?;
         let value = std::fs::read_to_string(file_name).ok();
         if value.is_none() {
-            tracing::warn!("Failed to read file described by environment variable {}", var_name);
+            tracing::warn!(
+                "Failed to read file described by environment variable {}",
+                var_name
+            );
         }
         value
     }
@@ -58,7 +61,9 @@ impl PostgresLocksProvider {
         let dbname = Self::try_get_env_var(dbname_env_var)?;
         let username = Self::try_get_env_var(username_env_var)?;
         let password = Self::try_get_file_env_var(password_file_env_var)?;
-        Some(PostgresLocksProvider::new(&host, &dbname, &username, &password))
+        Some(PostgresLocksProvider::new(
+            &host, &dbname, &username, &password,
+        ))
     }
 
     pub fn new_from_env_variables(
@@ -248,11 +253,12 @@ impl LocksProvider for PostgresLocksProvider {
             .add_param_optional_str_string(" AND ref_name = ", ref_name);
         let (sql, params) = query.build();
         let stream = Self::query_raw(&transaction, sql, params).await?;
-        let lock = Self::one_row(stream).await
+        let lock = Self::one_row(stream)
+            .await
             .map(|row| Lock::from_row(&row))??;
 
         if lock.owner.name != user_name && !force {
-            return Err(LocksProviderError::ForceDeleteRequired)
+            return Err(LocksProviderError::ForceDeleteRequired);
         }
 
         let mut query = SqlQueryBuilder::new();
@@ -264,7 +270,9 @@ impl LocksProvider for PostgresLocksProvider {
             .add_param_optional_str_string(" AND ref_name = ", ref_name);
         let (sql, params) = query.build();
         Self::query_raw(&transaction, sql, params).await?;
-        transaction.commit().await
+        transaction
+            .commit()
+            .await
             .map_err(|e| LocksProviderError::RequestExecutionFailure(Box::new(e)))?;
 
         Ok(lock)
@@ -348,8 +356,7 @@ mod tests {
             .unwrap();
         client.execute(&stmt, &[]).await.unwrap();
 
-        let locks_provider =
-            PostgresLocksProvider::new("localhost", &dbname, "postgres", "1");
+        let locks_provider = PostgresLocksProvider::new("localhost", &dbname, "postgres", "1");
 
         (dbname, locks_provider)
     }
