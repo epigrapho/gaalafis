@@ -37,6 +37,8 @@ jobs:
         rust-version: 1.70.0
 
     - name: Build and test
+      
       run: |
+        cd modules/lfs-server
         cargo build
         cargo test
