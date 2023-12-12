@@ -9,10 +9,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    container:
-      image: xd009642/tarpaulin:develop-nightly
-      options: --security-opt seccomp=unconfined
-
     services:  
       bucket:
         image: minio/minio:edge-cicd
@@ -31,20 +27,16 @@ jobs:
         ports:
           - 5432:5432
 
+  test-coverage: 
+    runs-on: ubuntu-latest
+
+    container:
+      image: xd009642/tarpaulin:develop-nightly
+      options: --security-opt seccomp=unconfined
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
-
-    - name: Setup | Rust
-      uses: ATiltedTree/setup-rust@v1
-      with:
-        rust-version: 1.70.0
-
-    - name: Build and test
-      run: |
-        cd modules/lfs-server
-        cargo build
-        cargo test
 
     - name: Generate code coverage
       run: |
