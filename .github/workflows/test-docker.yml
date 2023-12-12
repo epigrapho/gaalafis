@@ -9,6 +9,10 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    container:
+      image: xd009642/tarpaulin:develop-nightly
+      options: --security-opt seccomp=unconfined
+
     services:  
       bucket:
         image: minio/minio:edge-cicd
@@ -37,8 +41,17 @@ jobs:
         rust-version: 1.70.0
 
     - name: Build and test
-      
       run: |
         cd modules/lfs-server
         cargo build
         cargo test
+
+    - name: Generate code coverage
+      run: |
+        cd modules/lfs-server
+        cargo +nightly tarpaulin --verbose --all-features --workspace --timeout 120 --out xml
+
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v3
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
