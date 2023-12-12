@@ -12,13 +12,14 @@ jobs:
     services:  
       bucket:
         image: minio/minio
-        entrypoint: sh
         command: -c 'mkdir -p /data/bucket && minio server /data'
         environment:
           MINIO_ACCESS_KEY: minio_access_key
           MINIO_SECRET_KEY: minio_secret_key
         ports:
           - "9000:9000"
+        options:
+          entrypoint: sh
 
       database:
         image: postgres:15.0
