@@ -26,6 +26,7 @@ jobs:
           POSTGRES_DB: postgres
         ports:
           - 5432:5432
+
     steps: 
       - name: Checkout code
         uses: actions/checkout@v2
@@ -43,6 +44,24 @@ jobs:
 
   test-coverage: 
     runs-on: ubuntu-latest
+
+    services:  
+      bucket:
+        image: minio/minio:edge-cicd
+        env:
+          MINIO_ACCESS_KEY: minio_access_key
+          MINIO_SECRET_KEY: minio_secret_key
+        ports:
+          - "9000:9000"
+
+      database:
+        image: postgres:15.0
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: 1
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
 
     steps:
     - name: Checkout code
