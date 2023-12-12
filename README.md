@@ -1,5 +1,7 @@
 # GAALAFIS (Git Authenticated and Authorized LArge FIle Storage) [WIP]
 
+[![codecov2](https://codecov.io/gh/Leonils/gaalafis/graph/badge.svg?token=YCGN2KLRLB)](https://codecov.io/gh/Leonils/gaalafis)
+
 A reference architecture to serve git and git-lfs repositories with per-repository access control.
 
 ## Features

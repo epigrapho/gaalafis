@@ -1,20 +1,12 @@
 services:  
   bucket:
     image: minio/minio
-    entrypoint: sh /root/.minio-entrypoint/minio_entrypoint.sh
-    command: -c 'mkdir -p /data/bucket && minio server /data --console-address ":9001"'
+    entrypoint: minio server /data
     environment:
-      MINIO_ACCESS_KEY_FILE: /run/secrets/sbs_access_key
-      MINIO_SECRET_KEY_FILE: /run/secrets/sbs_secret_key
+      MINIO_ACCESS_KEY: minio_access_key
+      MINIO_SECRET_KEY: minio_secret_key
     ports:
       - "9000:9000"
-      - "9001:9001"
-    volumes:
-      - minio:/data
-      - ./minio:/root/.minio-entrypoint
-    secrets:
-      - sbs_access_key
-      - sbs_secret_key
 
   database:
     image: postgres:15.0
@@ -24,16 +16,3 @@ services:
       POSTGRES_DB: postgres
     ports:
       - 5432:5432
-
-secrets:
-  admin-tester.pub:
-    file: ../runner/ssh/id_rsa.pub
-  jwt_secret:
-    file: ./secrets/jwt_secret
-  sbs_access_key:
-    file: ./secrets/sbs_access_key
-  sbs_secret_key:
-    file: ./secrets/sbs_secret_key
-  
-volumes: 
-  minio:
