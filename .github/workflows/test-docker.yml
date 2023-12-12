@@ -27,6 +27,9 @@ jobs:
         ports:
           - 5432:5432
     steps: 
+      - name: Checkout code
+        uses: actions/checkout@v2
+
       - name: Setup | Rust
         uses: ATiltedTree/setup-rust@v1
         with:
