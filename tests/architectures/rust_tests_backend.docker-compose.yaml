@@ -1,8 +1,7 @@
 services:  
   bucket:
     image: minio/minio
-    entrypoint: sh
-    command: -c 'mkdir -p /data/bucket && minio server /data'
+    entrypoint: minio server /data
     environment:
       MINIO_ACCESS_KEY: minio_access_key
       MINIO_SECRET_KEY: minio_secret_key

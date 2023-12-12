@@ -17,9 +17,7 @@ jobs:
           MINIO_SECRET_KEY: minio_secret_key
         ports:
           - "9000:9000"
-        options:
-          entrypoint: sh
-          command: -c 'mkdir -p /data/bucket && minio server /data'
+        options: '--entrypoint "minio server /data"'
 
       database:
         image: postgres:15.0
