@@ -26,6 +26,17 @@ jobs:
           POSTGRES_DB: postgres
         ports:
           - 5432:5432
+    steps: 
+      - name: Setup | Rust
+        uses: ATiltedTree/setup-rust@v1
+        with:
+          rust-version: 1.70.0
+
+      - name: Build and test
+        run: |
+          cd modules/lfs-server
+          cargo build
+          cargo test
 
   test-coverage: 
     runs-on: ubuntu-latest
