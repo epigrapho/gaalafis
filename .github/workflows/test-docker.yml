@@ -12,18 +12,18 @@ jobs:
     services:  
       bucket:
         image: minio/minio
-        command: -c 'mkdir -p /data/bucket && minio server /data'
-        environment:
+        env:
           MINIO_ACCESS_KEY: minio_access_key
           MINIO_SECRET_KEY: minio_secret_key
         ports:
           - "9000:9000"
         options:
           entrypoint: sh
+          command: -c 'mkdir -p /data/bucket && minio server /data'
 
       database:
         image: postgres:15.0
-        environment:
+        env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: 1
           POSTGRES_DB: postgres
