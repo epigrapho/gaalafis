@@ -1,0 +1,44 @@
+name: Integration Tests
+
+on:
+  push:
+    branches:
+      - tests/refactor-tests
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:  
+      bucket:
+        image: minio/minio
+        entrypoint: sh
+        command: -c 'mkdir -p /data/bucket && minio server /data'
+        environment:
+          MINIO_ACCESS_KEY: minio_access_key
+          MINIO_SECRET_KEY: minio_secret_key
+        ports:
+          - "9000:9000"
+
+      database:
+        image: postgres:15.0
+        environment:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: 1
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Setup | Rust
+      uses: ATiltedTree/setup-rust@v1
+      with:
+        rust-version: 1.70.0
+
+    - name: Build and test
+      run: |
+        cargo build
+        cargo test

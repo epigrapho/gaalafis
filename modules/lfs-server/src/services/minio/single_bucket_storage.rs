@@ -162,7 +162,7 @@ impl FileStorageProxy for MinioSingleBucketStorage {
 
 #[cfg(test)]
 mod tests {
-    use s3::{creds::Credentials, Region};
+    use s3::{creds::Credentials, Bucket, BucketConfiguration, Region};
 
     use crate::traits::file_storage::{
         FileStorageLinkSigner, FileStorageMetaRequester, FileStorageMetaResult,
@@ -170,38 +170,60 @@ mod tests {
 
     use super::MinioSingleBucketStorage;
 
-    fn get_mock_storage() -> MinioSingleBucketStorage {
-        let storage = MinioSingleBucketStorage::new(
-            String::from("bucket"),
-            Credentials::new(
-                Some("minio_access_key"),
-                Some("minio_secret_key"),
-                None,
-                None,
-                None,
-            )
-            .unwrap(),
-            Region::Custom {
-                region: String::from("test"),
-                endpoint: String::from("http://localhost:9000"),
-            },
-            Some(Region::Custom {
-                region: String::from("test"),
-                endpoint: String::from("https://storage"),
-            }),
-        );
-        return storage;
-    }
-
     macro_rules! aw {
         ($e:expr) => {
             tokio_test::block_on($e)
         };
     }
 
+    async fn get_mock_storage_async() -> (String, MinioSingleBucketStorage) {
+        let bucket_name = uuid::Uuid::new_v4().to_string();
+        let region = Region::Custom {
+            region: String::from("test"),
+            endpoint: String::from("http://localhost:9000"),
+        };
+        let credentials = Credentials::new(
+            Some("minio_access_key"),
+            Some("minio_secret_key"),
+            None,
+            None,
+            None,
+        )
+        .unwrap();
+        let bucket = Bucket::create_with_path_style(
+            &bucket_name,
+            region.clone(),
+            credentials.clone(),
+            BucketConfiguration::private(),
+        )
+            .await
+            .unwrap()
+            .bucket
+            .with_path_style();
+        bucket.put_object_with_content_type(
+            String::from("repo/objects/test.txt"),
+            b"hello",
+            "text/plain",
+        ).await.unwrap();
+        let storage = MinioSingleBucketStorage::new(
+            bucket_name.clone(),
+            credentials,
+            region,
+            Some(Region::Custom {
+                region: String::from("test"),
+                endpoint: String::from("https://storage"),
+            }),
+        );
+        (bucket_name, storage)
+    }
+
+    fn get_mock_storage() -> (String, MinioSingleBucketStorage) {
+        aw!(get_mock_storage_async())
+    }
+
     #[test]
     fn test_get_object_path() {
-        let storage = get_mock_storage();
+        let (_, storage) = get_mock_storage();
         let path = storage.get_object_path("repo", "oid");
         assert_eq!(path, "repo/objects/oid");
     }
@@ -214,9 +236,11 @@ mod tests {
             exists: true,
             size: 0,
         };
-        let signed = aw!(get_mock_storage().get_presigned_link(result)).unwrap();
+        let (bucket_name, storage) = get_mock_storage();
+        let signed = aw!(storage.get_presigned_link(result)).unwrap();
 
-        assert!(signed.href.starts_with("https://storage/bucket/repo/objects/oid?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=minio_access_key"));
+        let expected = format!("https://storage/{}/repo/objects/oid?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=minio_access_key", bucket_name);
+        assert!(signed.href.starts_with(&expected));
         assert!(signed.href.contains("&X-Amz-Expires=3600"));
         assert!(signed.href.contains("&X-Amz-SignedHeaders=host"));
         assert!(signed.href.contains("&X-Amz-Signature="));
@@ -233,9 +257,11 @@ mod tests {
             exists: true,
             size: 0,
         };
-        let (upload, verify) = aw!(get_mock_storage().post_presigned_link(result, 30)).unwrap();
+        let (bucket_name, storage) = get_mock_storage();
+        let (upload, verify) = aw!(storage.post_presigned_link(result, 30)).unwrap();
 
-        assert!(upload.href.starts_with("https://storage/bucket/repo/objects/oid?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=minio_access_key"));
+        let expected = format!("https://storage/{}/repo/objects/oid?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=minio_access_key", bucket_name);
+        assert!(upload.href.starts_with(&expected));
         assert!(upload.href.contains("&X-Amz-Expires=3600"));
         assert!(upload.href.contains("&X-Amz-SignedHeaders=host"));
         assert!(upload.href.contains("&X-Amz-Signature="));
@@ -247,7 +273,8 @@ mod tests {
 
     #[test]
     fn test_get_meta_success() {
-        let meta = aw!(get_mock_storage().get_meta_result("repo", "test.txt"));
+        let (_, storage) = get_mock_storage();
+        let meta = aw!(storage.get_meta_result("repo", "test.txt"));
 
         assert!(meta.exists);
         assert_eq!(meta.size, 5);
@@ -257,7 +284,8 @@ mod tests {
 
     #[test]
     fn test_get_meta_not_found() {
-        let meta = aw!(get_mock_storage().get_meta_result("repo", "test_not_found.txt"));
+        let (_, storage) = get_mock_storage();
+        let meta = aw!(storage.get_meta_result("repo", "test_not_found.txt"));
 
         assert!(!meta.exists);
         assert_eq!(meta.size, 0);

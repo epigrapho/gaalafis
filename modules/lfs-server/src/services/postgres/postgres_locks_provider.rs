@@ -205,7 +205,7 @@ impl LocksProvider for PostgresLocksProvider {
             .add_param_optional_str_i32(" AND id >= ", cursor)
             .map_err(|_| LocksProviderError::InvalidCursor)?
             .append(" ORDER BY id ASC")
-            .limit(limit, 100, 1, 5, 1000)
+            .limit(limit, 100, 1, 1, 1000)
             .map_err(|_| LocksProviderError::InvalidLimit)?;
 
         let (sql, params) = query.build();
