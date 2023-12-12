@@ -1,7 +1,7 @@
-name: Unit Tests
+name: Unit Tests (Main)
 
 on:
-  pull_request:
+  push:
     branches:
       - main
 
