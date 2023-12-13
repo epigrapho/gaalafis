@@ -148,7 +148,6 @@ impl FileStorageProxy for MinioSingleBucketStorage {
         content_type: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let s3_path = self.get_object_path(repo, oid);
-
         self.bucket_direct_access
             .put_object_with_content_type(s3_path, &data, content_type)
             .await?;
@@ -168,7 +167,7 @@ mod tests {
         FileStorageLinkSigner, FileStorageMetaRequester, FileStorageMetaResult,
     };
 
-    use super::MinioSingleBucketStorage;
+    use super::*;
 
     macro_rules! aw {
         ($e:expr) => {
@@ -176,7 +175,7 @@ mod tests {
         };
     }
 
-    async fn get_mock_storage_async() -> (String, MinioSingleBucketStorage) {
+    async fn init_random_bucket() -> (String, Credentials, Region) {
         let bucket_name = uuid::Uuid::new_v4().to_string();
         let region = Region::Custom {
             region: String::from("test"),
@@ -189,7 +188,7 @@ mod tests {
             None,
             None,
         )
-        .unwrap();
+            .unwrap();
         let bucket = Bucket::create_with_path_style(
             &bucket_name,
             region.clone(),
@@ -205,7 +204,11 @@ mod tests {
             b"hello",
             "text/plain",
         ).await.unwrap();
-        let storage = MinioSingleBucketStorage::new(
+        (bucket_name, credentials, region)
+    }
+
+    fn get_test_minio_single_bucket_storage(bucket_name: String, credentials: Credentials, region: Region) -> MinioSingleBucketStorage {
+        MinioSingleBucketStorage::new(
             bucket_name.clone(),
             credentials,
             region,
@@ -213,17 +216,18 @@ mod tests {
                 region: String::from("test"),
                 endpoint: String::from("https://storage"),
             }),
-        );
-        (bucket_name, storage)
+        )
     }
 
-    fn get_mock_storage() -> (String, MinioSingleBucketStorage) {
-        aw!(get_mock_storage_async())
+    fn get_random_initialized_storage() -> (String, MinioSingleBucketStorage) {
+        let (bucket_name, credentials, region) = aw!(init_random_bucket());
+        let storage = get_test_minio_single_bucket_storage(bucket_name.clone(), credentials, region);
+        (bucket_name, storage)
     }
 
     #[test]
     fn test_get_object_path() {
-        let (_, storage) = get_mock_storage();
+        let (_, storage) = get_random_initialized_storage();
         let path = storage.get_object_path("repo", "oid");
         assert_eq!(path, "repo/objects/oid");
     }
@@ -236,7 +240,7 @@ mod tests {
             exists: true,
             size: 0,
         };
-        let (bucket_name, storage) = get_mock_storage();
+        let (bucket_name, storage) = get_random_initialized_storage();
         let signed = aw!(storage.get_presigned_link(result)).unwrap();
 
         let expected = format!("https://storage/{}/repo/objects/oid?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=minio_access_key", bucket_name);
@@ -257,7 +261,7 @@ mod tests {
             exists: true,
             size: 0,
         };
-        let (bucket_name, storage) = get_mock_storage();
+        let (bucket_name, storage) = get_random_initialized_storage();
         let (upload, verify) = aw!(storage.post_presigned_link(result, 30)).unwrap();
 
         let expected = format!("https://storage/{}/repo/objects/oid?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=minio_access_key", bucket_name);
@@ -273,7 +277,7 @@ mod tests {
 
     #[test]
     fn test_get_meta_success() {
-        let (_, storage) = get_mock_storage();
+        let (_, storage) = get_random_initialized_storage();
         let meta = aw!(storage.get_meta_result("repo", "test.txt"));
 
         assert!(meta.exists);
@@ -284,12 +288,50 @@ mod tests {
 
     #[test]
     fn test_get_meta_not_found() {
-        let (_, storage) = get_mock_storage();
+        let (_, storage) = get_random_initialized_storage();
         let meta = aw!(storage.get_meta_result("repo", "test_not_found.txt"));
 
         assert!(!meta.exists);
         assert_eq!(meta.size, 0);
         assert_eq!(meta.oid, "test_not_found.txt");
         assert_eq!(meta.repo, "repo");
+    }
+
+    #[test]
+    fn test_get_success() {
+        let (_, storage) = get_random_initialized_storage();
+        let (data, content_type) = aw!(storage.get("repo", "test.txt")).unwrap();
+        assert_eq!(data, b"hello");
+        assert_eq!(content_type, "text/plain");
+    }
+
+    #[test]
+    fn test_get_not_found() {
+        let (_, storage) = get_random_initialized_storage();
+        let result = aw!(storage.get("repo", "test_not_found.txt"));
+        let error = result.unwrap_err();
+        assert!(error.to_string().starts_with("Got HTTP 404 with content"));
+    }
+
+    #[test]
+    fn test_post_success() {
+        let (_, storage) = get_random_initialized_storage();
+        let result = aw!(storage.post("repo", "another-test.txt", b"hello2".to_vec(), "text/plain"));
+        assert!(result.is_ok());
+
+        let response = aw!(storage.bucket_direct_access.get_object("/repo/objects/another-test.txt")).unwrap();
+        let headers = response.headers();
+        let content_type = headers.get("content-type").unwrap();
+        assert_eq!(response.to_vec(), b"hello2");
+        assert_eq!(content_type, "text/plain");
+    }
+
+    #[test]
+    fn test_post_wrong_bucket() {
+        let (_, credentials, region) = aw!(init_random_bucket());
+        let storage = get_test_minio_single_bucket_storage(String::from("other-bucket"), credentials, region);
+        let result = aw!(storage.post("repo", "another-test.txt", b"hello2".to_vec(), "text/plain"));
+        let error = result.unwrap_err();
+        assert!(error.to_string().starts_with("Got HTTP 404 with content"));
     }
 }
