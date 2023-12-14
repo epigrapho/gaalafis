@@ -1,19 +1,7 @@
-use axum::{
-    middleware,
-    routing::{get, post},
-    Router,
-};
 use s3::{creds::Credentials, Region};
-use std::net::SocketAddr;
-use std::sync::Arc;
 
 use lfs_info_server::{
-    controllers::{
-        errors::handle_and_filter_error_details,
-        locks::{list_locks, list_locks_for_verification, post_lock, unlock},
-        objects::batch::post_objects_batch,
-    },
-    server::RouterExt,
+    server::run_server,
     services::{
         jwt_token_encoder_decoder::JwtTokenEncoderDecoder,
         minio::single_bucket_storage::MinioSingleBucketStorage,
@@ -35,6 +23,12 @@ pub struct InjectedServices {
     fs: MinioSingleBucketStorage,
     token_encoder_decoder: JwtTokenEncoderDecoder,
     locks_provider: Option<PostgresLocksProvider>,
+}
+
+impl Default for InjectedServices {
+    fn default() -> Self {
+        InjectedServices::new()
+    }
 }
 
 impl InjectedServices {
@@ -107,30 +101,5 @@ impl Services for InjectedServices {
 
 #[tokio::main]
 async fn main() {
-    // initialize tracing
-    tracing_subscriber::fmt::init();
-
-    // Bundle services
-    let services: Arc<dyn Services + Send + Sync> = Arc::new(InjectedServices::new());
-
-    // build our application with a route
-    let app = Router::new()
-        // `POST /objects/batch?repo=a/b/c`
-        .directory_route("/objects/batch", post(post_objects_batch))
-        .directory_route("/locks", post(post_lock))
-        .directory_route("/locks", get(list_locks))
-        .directory_route("/locks/:id/unlock", post(unlock))
-        .directory_route("/locks/verify", post(list_locks_for_verification))
-        // Error handling
-        .layer(middleware::from_fn(handle_and_filter_error_details))
-        .with_state(services);
-
-    // run our app with hyper
-    // `axum::Server` is a re-export of `hyper::Server`
-    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
-    tracing::debug!("listening on {}", addr);
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
+    run_server::<InjectedServices>(false, true).await;
 }

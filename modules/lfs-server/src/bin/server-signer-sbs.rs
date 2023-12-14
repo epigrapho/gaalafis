@@ -1,11 +1,7 @@
-use axum::{middleware, routing::post, Router};
 use s3::{creds::Credentials, Region};
-use std::net::SocketAddr;
-use std::sync::Arc;
 
 use lfs_info_server::{
-    controllers::{errors::handle_and_filter_error_details, objects::batch::post_objects_batch},
-    server::RouterExt,
+    server::run_server,
     services::{
         jwt_token_encoder_decoder::JwtTokenEncoderDecoder,
         minio::single_bucket_storage::MinioSingleBucketStorage,
@@ -24,6 +20,12 @@ use lfs_info_server::{
 pub struct InjectedServices {
     fs: MinioSingleBucketStorage,
     token_encoder_decoder: JwtTokenEncoderDecoder,
+}
+
+impl Default for InjectedServices {
+    fn default() -> Self {
+        InjectedServices::new()
+    }
 }
 
 impl InjectedServices {
@@ -84,26 +86,5 @@ impl Services for InjectedServices {
 
 #[tokio::main]
 async fn main() {
-    // initialize tracing
-    tracing_subscriber::fmt::init();
-
-    // Bundle services
-    let services: Arc<dyn Services + Send + Sync> = Arc::new(InjectedServices::new());
-
-    // build our application with a route
-    let app = Router::new()
-        // `POST /objects/batch?repo=a/b/c`
-        .directory_route("/objects/batch", post(post_objects_batch))
-        // Error handling
-        .layer(middleware::from_fn(handle_and_filter_error_details))
-        .with_state(services);
-
-    // run our app with hyper
-    // `axum::Server` is a re-export of `hyper::Server`
-    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
-    tracing::debug!("listening on {}", addr);
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
+    run_server::<InjectedServices>(false, false).await;
 }
