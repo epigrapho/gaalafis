@@ -203,7 +203,8 @@ It's now time to add the lfs server to the services.
 ```yaml
 services:
   lfs: 
-    image: epigrapho/gaalafis-lfs-server:0.3.20-proxy-sbs-locks-pg
+    image: epigrapho/gaalafis-lfs-server:x.y.z
+    command: ["proxy", "sbs", "locks", "pg"]
     environment:
       SBS_BUCKET_NAME: bucket
       SBS_ACCESS_KEY_FILE: /run/secrets/sbs_access_key
@@ -241,6 +242,10 @@ secrets:
     file: ./secrets/db_password  
 ```
 
+Note the command of the lfs server: `proxy sbs locks pg`. This command will start the lfs server in proxy mode (so only the lfs server accesses the bucket, not the final client), with the single bucket storage backend, locks enabled, and implemented with a postgres database.
+
+> **See [configuration of the LFS server](./configuration-lfs-server.md) for more details on the chiche of the variant and the required configuration**
+
 Here there are some configuration to setup: 
 
 - SBS stands for "Single bucket storage" and is the configuration of your bucket. You can enter here your access to S3 bucket, or specify the other service.
@@ -256,6 +261,7 @@ Here there are some configuration to setup:
 - DATABASE: the postgres database connection configuration (HOST, USER, PASSWORD, and database name NAME)
 - JWT_SECRET_FILE: a file in the container with the secret to verify the jwt signed by the gitolite component, and to sign jwt
 - JWT_EXPIRES_IN: the expiration time of JWT in seconds
+
 
 ## Nginx
 

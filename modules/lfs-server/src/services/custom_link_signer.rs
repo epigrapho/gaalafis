@@ -59,12 +59,23 @@ pub struct CustomLinkSigner<TTokenEncoderDecoder: TokenEncoderDecoder> {
     signer: TTokenEncoderDecoder,
 }
 
+pub struct CustomLinkSignerConfig {
+    pub host: String,
+}
+
 impl<TTokenEncoderDecoder: TokenEncoderDecoder> CustomLinkSigner<TTokenEncoderDecoder> {
     pub fn new(
         host: String,
         signer: TTokenEncoderDecoder,
     ) -> CustomLinkSigner<TTokenEncoderDecoder> {
         CustomLinkSigner { host, signer }
+    }
+
+    pub fn from_config(
+        config: &CustomLinkSignerConfig,
+        signer: TTokenEncoderDecoder,
+    ) -> CustomLinkSigner<TTokenEncoderDecoder> {
+        CustomLinkSigner::new(config.host.clone(), signer)
     }
 
     pub fn from_env_var(
@@ -267,6 +278,4 @@ mod tests {
             Operation::Download
         )));
     }
-
-
 }

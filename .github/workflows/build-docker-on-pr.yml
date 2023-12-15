@@ -23,10 +23,6 @@ jobs:
   build-lfs-server:
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        build: [proxy-sbs, proxy-sbs-locks-pg, signer-sbs, signer-sbs-locks-pg, proxy-fs, proxy-fs-locks-pg]
-
     steps:
       - name: Check out the repo
         uses: actions/checkout@v4
@@ -36,5 +32,4 @@ jobs:
         with:
           context: ./modules/lfs-server
           file: ./modules/lfs-server/Dockerfile.prod
-          build-args: binary=${{ matrix.build }}
           push: false

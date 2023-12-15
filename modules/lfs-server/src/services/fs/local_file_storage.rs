@@ -4,6 +4,10 @@ use crate::traits::file_storage::{
 use async_trait::async_trait;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
+pub struct LocalFileStorageConfig {
+    pub root_path: String,
+}
+
 pub struct LocalFileStorage {
     root_path: String,
 }
@@ -11,6 +15,10 @@ pub struct LocalFileStorage {
 impl LocalFileStorage {
     pub fn new(root_path: String) -> LocalFileStorage {
         LocalFileStorage { root_path }
+    }
+
+    pub fn from_config(config: LocalFileStorageConfig) -> LocalFileStorage {
+        LocalFileStorage::new(config.root_path)
     }
 
     pub fn get_object_path(&self, repo: &str, oid: &str) -> String {

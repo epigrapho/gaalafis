@@ -19,6 +19,13 @@ pub struct MinioSingleBucketStorage {
     bucket_public_access: Bucket,
 }
 
+pub struct MinioSingleBucketStorageConfig {
+    pub bucket_name: String,
+    pub credentials: Credentials,
+    pub direct_access_region: Region,
+    pub public_access_region: Option<Region>,
+}
+
 impl MinioSingleBucketStorage {
     pub fn new(
         bucket_name: String,
@@ -54,6 +61,15 @@ impl MinioSingleBucketStorage {
             bucket_direct_access,
             bucket_public_access,
         }
+    }
+
+    pub fn from_config(config: MinioSingleBucketStorageConfig) -> MinioSingleBucketStorage {
+        Self::new(
+            config.bucket_name,
+            config.credentials,
+            config.direct_access_region,
+            config.public_access_region,
+        )
     }
 
     pub fn get_object_path(&self, repo: &str, oid: &str) -> String {
@@ -188,26 +204,33 @@ mod tests {
             None,
             None,
         )
-            .unwrap();
+        .unwrap();
         let bucket = Bucket::create_with_path_style(
             &bucket_name,
             region.clone(),
             credentials.clone(),
             BucketConfiguration::private(),
         )
+        .await
+        .unwrap()
+        .bucket
+        .with_path_style();
+        bucket
+            .put_object_with_content_type(
+                String::from("repo/objects/test.txt"),
+                b"hello",
+                "text/plain",
+            )
             .await
-            .unwrap()
-            .bucket
-            .with_path_style();
-        bucket.put_object_with_content_type(
-            String::from("repo/objects/test.txt"),
-            b"hello",
-            "text/plain",
-        ).await.unwrap();
+            .unwrap();
         (bucket_name, credentials, region)
     }
 
-    fn get_test_minio_single_bucket_storage(bucket_name: String, credentials: Credentials, region: Region) -> MinioSingleBucketStorage {
+    fn get_test_minio_single_bucket_storage(
+        bucket_name: String,
+        credentials: Credentials,
+        region: Region,
+    ) -> MinioSingleBucketStorage {
         MinioSingleBucketStorage::new(
             bucket_name.clone(),
             credentials,
@@ -221,7 +244,8 @@ mod tests {
 
     fn get_random_initialized_storage() -> (String, MinioSingleBucketStorage) {
         let (bucket_name, credentials, region) = aw!(init_random_bucket());
-        let storage = get_test_minio_single_bucket_storage(bucket_name.clone(), credentials, region);
+        let storage =
+            get_test_minio_single_bucket_storage(bucket_name.clone(), credentials, region);
         (bucket_name, storage)
     }
 
@@ -316,10 +340,14 @@ mod tests {
     #[test]
     fn test_post_success() {
         let (_, storage) = get_random_initialized_storage();
-        let result = aw!(storage.post("repo", "another-test.txt", b"hello2".to_vec(), "text/plain"));
+        let result =
+            aw!(storage.post("repo", "another-test.txt", b"hello2".to_vec(), "text/plain"));
         assert!(result.is_ok());
 
-        let response = aw!(storage.bucket_direct_access.get_object("/repo/objects/another-test.txt")).unwrap();
+        let response = aw!(storage
+            .bucket_direct_access
+            .get_object("/repo/objects/another-test.txt"))
+        .unwrap();
         let headers = response.headers();
         let content_type = headers.get("content-type").unwrap();
         assert_eq!(response.to_vec(), b"hello2");
@@ -329,8 +357,10 @@ mod tests {
     #[test]
     fn test_post_wrong_bucket() {
         let (_, credentials, region) = aw!(init_random_bucket());
-        let storage = get_test_minio_single_bucket_storage(String::from("other-bucket"), credentials, region);
-        let result = aw!(storage.post("repo", "another-test.txt", b"hello2".to_vec(), "text/plain"));
+        let storage =
+            get_test_minio_single_bucket_storage(String::from("other-bucket"), credentials, region);
+        let result =
+            aw!(storage.post("repo", "another-test.txt", b"hello2".to_vec(), "text/plain"));
         let error = result.unwrap_err();
         assert!(error.to_string().starts_with("Got HTTP 404 with content"));
     }

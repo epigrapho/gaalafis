@@ -1,0 +1,93 @@
+@startuml
+start
+
+#palegreen:server/
+
+:services.token_encoder_decoder = JwtTokenEncoderDecoder;
+
+switch (args[0]?) 
+case ( sbs ) 
+  #palegreen:sbs/
+  :fs=new MinioSingleBucketStorage;
+  :file_storage_meta_requester = fs;
+  switch (args[1]?) 
+  case ( proxy )
+    #palegreen:proxy/
+    :file_storage_link_signer = new CustomLinkSigner;
+    :file_storage_proxy = fs;
+  case ( signer ) 
+    #palegreen:signer/
+    :file_storage_link_signer = fs;
+  case ( _ ) 
+    :Error;
+    detach
+  endswitch
+case ( fs ) 
+  #palegreen:fs/
+  if (args[1]?) then (proxy)
+    #palegreen:proxy/
+  else (*)
+    :Error;
+    detach
+  endif
+  :fs=new LocalFileStorage;
+  :file_storage_meta_requester = fs;
+  :file_storage_proxy = fs;
+  :file_storage_link_signer = new CustomLinkSigner;
+case ( _ ) 
+  :Error;
+  detach
+endswitch
+
+switch (args[2,3]?) 
+case ( "" ) 
+  #palegreen:""/
+case ( "locks pg" ) 
+  #palegreen:locks pg/
+  :locks_provider = new PostgresLocksProvider;
+endswitch
+
+
+stop
+@enduml
+
+@startuml CLI
+start
+
+#palegreen:server/
+
+:services.token_encoder_decoder = JwtTokenEncoderDecoder;
+
+group file storage
+  switch (args[0, 1]?) 
+  case ( sbs proxy ) 
+      #palegreen:sbs proxy/
+      :use one bucket\nfor all repos;
+      :The storage is not\npublicly accessible\nAct as a proxy\nfor the storage;
+  case ( sbs signer ) 
+      #palegreen:sbs signer/
+      :use one bucket\nfor all repos;
+      :The bucket is accessible\nfrom outside and we\nsign links to it;
+  case ( fs proxy ) 
+    #palegreen:fs proxy/
+    :Use the filesystem of the server\nfor storing objects;
+    :Act as a proxy for it;
+  case ( _ ) 
+    :Error;
+    detach
+  endswitch
+end group
+
+group locks
+  switch (args[2,3]?) 
+  case ( "" ) 
+    #palegreen:""/
+    :Do not provide locks API;
+  case ( "locks pg" ) 
+    #palegreen:locks pg/
+    :Store locks in\nPostgres database\nAnd expose a locks\nAPI;
+  endswitch
+end group
+
+stop
+@enduml

@@ -18,7 +18,8 @@ services:
       - ./nginx/ssl:/etc/nginx/ssl
   
   lfs: 
-    image: gaalafis/lfs-server:0.0.1-proxy-sbs
+    image: gaalafis/lfs-server:0.0.1
+    command: ["proxy", "sbs"]
     environment:
       SBS_BUCKET_NAME: bucket
       SBS_ACCESS_KEY_FILE: /run/secrets/sbs_access_key

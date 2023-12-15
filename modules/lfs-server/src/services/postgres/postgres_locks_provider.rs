@@ -15,13 +15,20 @@ pub struct PostgresLocksProvider {
     pool: Pool,
 }
 
+pub struct PostgresLocksProviderConfig {
+    pub host: String,
+    pub dbname: String,
+    pub username: String,
+    pub password: String,
+}
+
 impl PostgresLocksProvider {
-    pub fn new(host: &str, dbname: &str, username: &str, password: &str) -> Self {
+    pub fn from_config(config: PostgresLocksProviderConfig) -> Self {
         let mut cfg = Config::new();
-        cfg.host = Some(String::from(host));
-        cfg.dbname = Some(String::from(dbname));
-        cfg.password = Some(String::from(password));
-        cfg.user = Some(String::from(username));
+        cfg.host = Some(config.host);
+        cfg.dbname = Some(config.dbname);
+        cfg.password = Some(config.password);
+        cfg.user = Some(config.username);
 
         cfg.manager = Some(ManagerConfig {
             recycling_method: RecyclingMethod::Fast,
@@ -29,59 +36,6 @@ impl PostgresLocksProvider {
         let pool = cfg.create_pool(Some(Runtime::Tokio1), NoTls).unwrap();
 
         Self { pool }
-    }
-
-    fn try_get_env_var(var_name: &str) -> Option<String> {
-        let value = std::env::var(var_name).ok();
-        if value.is_none() {
-            tracing::warn!("Failed to get environment variable {}", var_name);
-        }
-        value
-    }
-
-    fn try_get_file_env_var(var_name: &str) -> Option<String> {
-        let file_name = Self::try_get_env_var(var_name)?;
-        let value = std::fs::read_to_string(file_name).ok();
-        if value.is_none() {
-            tracing::warn!(
-                "Failed to read file described by environment variable {}",
-                var_name
-            );
-        }
-        value
-    }
-
-    pub fn try_new_from_env_variables(
-        host_env_var: &str,
-        dbname_env_var: &str,
-        username_env_var: &str,
-        password_file_env_var: &str,
-    ) -> Option<Self> {
-        let host = Self::try_get_env_var(host_env_var)?;
-        let dbname = Self::try_get_env_var(dbname_env_var)?;
-        let username = Self::try_get_env_var(username_env_var)?;
-        let password = Self::try_get_file_env_var(password_file_env_var)?;
-        Some(PostgresLocksProvider::new(
-            &host, &dbname, &username, &password,
-        ))
-    }
-
-    pub fn new_from_env_variables(
-        host_env_var: &str,
-        dbname_env_var: &str,
-        username_env_var: &str,
-        password_file_env_var: &str,
-    ) -> Result<Self, String> {
-        Self::try_new_from_env_variables(
-            host_env_var,
-            dbname_env_var,
-            username_env_var,
-            password_file_env_var,
-        )
-        .map_or(
-            Err(String::from("Failed to start PostgresLocksProvider")),
-            Ok,
-        )
     }
 
     async fn get_client(&self) -> Result<Object, LocksProviderError> {
@@ -356,7 +310,12 @@ mod tests {
             .unwrap();
         client.execute(&stmt, &[]).await.unwrap();
 
-        let locks_provider = PostgresLocksProvider::new("localhost", &dbname, "postgres", "1");
+        let locks_provider = PostgresLocksProvider::from_config(PostgresLocksProviderConfig {
+            host: String::from("localhost"),
+            dbname: dbname.clone(),
+            username: String::from("postgres"),
+            password: String::from("1"),
+        });
 
         (dbname, locks_provider)
     }

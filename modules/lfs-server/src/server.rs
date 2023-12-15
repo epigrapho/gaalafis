@@ -1,12 +1,15 @@
-use crate::controllers::errors::handle_and_filter_error_details;
-use crate::controllers::locks::{list_locks, list_locks_for_verification, post_lock, unlock};
-use crate::controllers::objects::batch::post_objects_batch;
-use crate::controllers::objects::download::download_object;
-use crate::controllers::objects::upload::upload_object;
-use crate::traits::services::Services;
+use crate::config::ServerConfig;
 use axum::body::HttpBody;
 use axum::routing::{get, post, put, MethodRouter};
 use axum::{middleware, Router};
+use lfs_info_server::{
+    controllers::{
+        errors::handle_and_filter_error_details,
+        locks::{list_locks, list_locks_for_verification, post_lock, unlock},
+        objects::{batch::post_objects_batch, download::download_object, upload::upload_object},
+    },
+    traits::services::Services,
+};
 use std::net::SocketAddr;
 use std::sync::Arc;
 
@@ -29,18 +32,15 @@ where
     }
 }
 
-pub async fn run_server<TServices: Services + Default + Send + Sync + 'static>(
-    proxy_enabled: bool,
-    locks_enabled: bool,
-) {
+pub async fn run_server(config: ServerConfig, services: Arc<dyn Services + Send + Sync + 'static>) {
     // initialize tracing
     tracing_subscriber::fmt::init();
 
     // Create services
-    let s: TServices = TServices::default();
+    // let s: TServices = TServices::default();
 
     // Bundle services
-    let services: Arc<dyn Services + Send + Sync + 'static> = Arc::new(s);
+    // let services: Arc<dyn Services + Send + Sync + 'static> = Arc::new(s);
 
     // build our application with a route
     let app = Router::new();
@@ -52,7 +52,7 @@ pub async fn run_server<TServices: Services + Default + Send + Sync + 'static>(
     // Proxy module
     //   - `PUT /objects/access/<oid>?repo=a/b/c`
     //   - `GET /objects/access/<oid>?repo=a/b/c`
-    let app = if proxy_enabled {
+    let app = if config.with_proxy {
         app.directory_route("/objects/access/:oid", put(upload_object))
             .directory_route("/objects/access/:oid", get(download_object))
     } else {
@@ -64,7 +64,7 @@ pub async fn run_server<TServices: Services + Default + Send + Sync + 'static>(
     //   - `GET /locks?repo=abc`
     //   - `POST /locks/:id/unlock?repo=abc`
     //   - `POST /locks/verify?repo=abc`
-    let app = if locks_enabled {
+    let app = if config.with_locks {
         app.directory_route("/locks", post(post_lock))
             .directory_route("/locks", get(list_locks))
             .directory_route("/locks/:id/unlock", post(unlock))
