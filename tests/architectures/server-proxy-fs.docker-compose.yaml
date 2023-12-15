@@ -18,7 +18,8 @@ services:
       - ./nginx/ssl:/etc/nginx/ssl
   
   lfs: 
-    image: gaalafis/lfs-server:0.0.1-proxy-fs
+    image: gaalafis/lfs-server:0.0.1
+    command: ["proxy", "fs"]
     environment:
       FS_ROOT_PATH: /tmp/
       CUSTOM_SIGNER_SECRET_FILE: /run/secrets/jwt_secret

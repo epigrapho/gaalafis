@@ -1,14 +1,12 @@
 FROM rust:1.72 as builder
 WORKDIR /app
-ARG binary
 COPY . .
-RUN cargo build --release --bin server-$binary
+RUN cargo build --release --bin lfs-info-server
 
 FROM ubuntu:22.04 AS runtime
-ARG binary
 WORKDIR /app
 RUN apt-get update && apt-get install -y openssl
-COPY --from=builder "/app/target/release/server-$binary" "/usr/local/bin/server"
+COPY --from=builder "/app/target/release/lfs-info-server" "/usr/local/bin/server"
 EXPOSE 3000
 ENTRYPOINT ["/usr/local/bin/server"]
 

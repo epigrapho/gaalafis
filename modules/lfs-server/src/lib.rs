@@ -45,5 +45,3 @@ pub mod traits {
     pub mod services;
     pub mod token_encoder_decoder;
 }
-
-pub mod server;

@@ -10,9 +10,18 @@ pub struct JwtTokenEncoderDecoder {
     expires_in: u64,
 }
 
+pub struct JwtTokenEncoderDecoderConfig {
+    pub secret: String,
+    pub expires_in: u64,
+}
+
 impl JwtTokenEncoderDecoder {
     pub fn new(secret: String, expires_in: u64) -> JwtTokenEncoderDecoder {
         JwtTokenEncoderDecoder { secret, expires_in }
+    }
+
+    pub fn from_config(config: JwtTokenEncoderDecoderConfig) -> JwtTokenEncoderDecoder {
+        JwtTokenEncoderDecoder::new(config.secret.clone(), config.expires_in)
     }
 
     pub fn from_env_var(key: &str, expires_in_key: &str) -> JwtTokenEncoderDecoder {
