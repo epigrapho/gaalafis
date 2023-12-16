@@ -35,6 +35,7 @@ pub mod services {
         pub mod sql_query_builder;
     }
     pub mod custom_link_signer;
+    pub mod injected_services;
     pub mod jwt;
     pub mod jwt_token_encoder_decoder;
 }
@@ -44,4 +45,10 @@ pub mod traits {
     pub mod locks;
     pub mod services;
     pub mod token_encoder_decoder;
+}
+
+#[cfg(test)]
+mod test_utils {
+    pub mod helpers;
+    pub mod mocks;
 }

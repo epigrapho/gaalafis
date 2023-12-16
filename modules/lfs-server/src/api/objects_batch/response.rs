@@ -3,13 +3,13 @@ use serde::Serialize;
 use super::super::enums::{HashAlgorithm, Transfer};
 
 /// Error details about an object
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct ObjectError {
     message: String,
 }
 
 /// Object identification and error details, when object action is not available
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct ObjectWithError {
     oid: String,
     size: u32,
@@ -17,14 +17,14 @@ pub struct ObjectWithError {
 }
 
 /// Represent the headers explicitly returned by the server, that need to be including in any future request to the server.
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 #[serde(rename_all = "PascalCase")]
 pub struct AuthorizationHeader {
     pub authorization: String,
 }
 
 /// An object action represents the next request to do to upload/download an object.
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct ObjectAction {
     pub href: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -45,13 +45,13 @@ impl ObjectAction {
 }
 
 /// For download operation, the api returns how to download the object
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct DownloadActions {
     download: ObjectAction,
 }
 
 /// For upload operation, the api returns how to upload the object, and if implemented how to verify that upload was successful
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct UploadActions {
     upload: ObjectAction,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -59,7 +59,7 @@ pub struct UploadActions {
 }
 
 /// According to the operation, the api returns either download or upload+verify actions
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 #[serde(untagged)]
 pub enum ObjectActions {
     Download(DownloadActions),
@@ -76,7 +76,7 @@ impl ObjectActions {
 }
 
 /// The object identification and the actions specifications
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct ObjectWithAvailableActions {
     oid: String,
     size: u32,
@@ -85,7 +85,7 @@ pub struct ObjectWithAvailableActions {
 
 /// When the server search for the object, either an action is returned, or an error.
 /// In any case, we return the object identification and size next to the error or action.
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 #[serde(untagged)]
 pub enum Object {
     ObjectWithAvailableActions(ObjectWithAvailableActions),
@@ -140,7 +140,7 @@ impl Object {
 }
 
 /// The response to the objects/batch request
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct ObjectsBatchSuccessResponse {
     transfer: Transfer,
     objects: Vec<Object>,
