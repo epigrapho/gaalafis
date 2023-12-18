@@ -1,9 +1,11 @@
 use crate::api::enums::Operation;
+use crate::api::locks::response::LockOwner;
 use crate::api::objects_batch::response::ObjectAction;
 use crate::services::injected_services::InjectedServices;
 use crate::traits::file_storage::{
     FileStorageLinkSigner, FileStorageMetaRequester, FileStorageMetaResult, FileStorageProxy,
 };
+use crate::traits::locks::{Lock, LocksProvider, LocksProviderError};
 use crate::traits::token_encoder_decoder::TokenEncoderDecoder;
 use async_trait::async_trait;
 use axum::http::HeaderMap;
@@ -171,6 +173,97 @@ impl FileStorageProxy for MockProxy {
     }
 }
 
+pub struct MockLocksProvider;
+
+impl MockLocksProvider {
+    fn new_lock(id: &str, path: &str, user_name: &str, ref_name: Option<&str>) -> Lock {
+        Lock {
+            id: String::from(id),
+            path: String::from(path),
+            locked_at: SystemTime::UNIX_EPOCH,
+            owner: LockOwner {
+                name: String::from(user_name),
+            },
+            ref_name: ref_name.map_or(String::from("NULL"), String::from),
+        }
+    }
+}
+
+#[async_trait]
+impl LocksProvider for MockLocksProvider {
+    async fn create_lock(
+        &self,
+        _repo: &str,
+        user_name: &str,
+        path: &str,
+        ref_name: Option<&str>,
+    ) -> Result<(Lock, bool), LocksProviderError> {
+        Ok((
+            Self::new_lock("id", path, user_name, ref_name),
+            !matches!(path, "existing"),
+        ))
+    }
+
+    /**
+     * List locks mock.
+     *
+     * If id is "invalid-id", returns InvalidId error.
+     * If limit is 42, returns InvalidLimit error.
+     * If cursor is "invalid-cursor", returns InvalidCursor error.
+     * There are 4 locks stored in the mock. If limit is not specified, it is assumed to be 3
+     */
+    async fn list_locks(
+        &self,
+        _repo: &str,
+        path: Option<&str>,
+        id: Option<&str>,
+        cursor: Option<&str>,
+        limit: Option<u64>,
+        ref_name: Option<&str>,
+    ) -> Result<(Option<String>, Vec<Lock>), LocksProviderError> {
+        if id == Some("invalid-id") {
+            return Err(LocksProviderError::InvalidId);
+        }
+        if let Some(42) = limit {
+            return Err(LocksProviderError::InvalidLimit);
+        }
+        if let Some("invalid-cursor") = cursor {
+            return Err(LocksProviderError::InvalidCursor);
+        }
+
+        let l1 = Self::new_lock("id1", path.unwrap_or("path1"), "user", ref_name);
+        let l2 = Self::new_lock("id2", path.unwrap_or("path2"), "user", ref_name);
+        let l3 = Self::new_lock("id3", path.unwrap_or("path3"), "user3", ref_name);
+        let l4 = Self::new_lock("id4", path.unwrap_or("path4"), "user4", ref_name);
+
+        match limit {
+            None => Ok((Some(String::from("id4")), vec![l1, l2, l3])),
+            Some(x) if x == 0 => Ok((None, vec![])),
+            Some(x) if x == 1 => Ok((Some(l2.id), vec![l1])),
+            Some(x) if x == 2 => Ok((Some(l3.id), vec![l1, l2])),
+            Some(x) if x == 3 => Ok((Some(l4.id), vec![l1, l2, l3])),
+            Some(_) => Ok((None, vec![l1, l2, l3, l4])),
+        }
+    }
+
+    async fn delete_lock(
+        &self,
+        _repo: &str,
+        user_name: &str,
+        id: &str,
+        ref_name: Option<&str>,
+        force: Option<bool>,
+    ) -> Result<Lock, LocksProviderError> {
+        match (id, force) {
+            ("force-required", Some(false)) => Err(LocksProviderError::ForceDeleteRequired),
+            ("force-required", None) => Err(LocksProviderError::ForceDeleteRequired),
+            ("not-found", _) => Err(LocksProviderError::LockNotFound),
+            ("invalid-id", _) => Err(LocksProviderError::InvalidId),
+            (_, _) => Ok(Self::new_lock(id, "path", user_name, ref_name)),
+        }
+    }
+}
+
 pub struct MockConfig {
     /**
      * Does the FileStorageMetaRequester find the file?
@@ -221,6 +314,11 @@ pub struct MockConfig {
      * Is proxy post request successful?
      */
     pub proxy_post_success: bool,
+
+    /**
+     * Is locks provider enabled
+     */
+    pub locks_enabled: bool,
 }
 
 impl Default for MockConfig {
@@ -239,6 +337,7 @@ impl Default for MockConfig {
             proxy_enabled: false,
             proxy_get_success: true,
             proxy_post_success: true,
+            locks_enabled: false,
         }
     }
 }
@@ -264,7 +363,11 @@ pub fn get_mock(config: MockConfig) -> InjectedServices {
             }),
             expired: config.expired,
         }),
-        locks_provider: None,
+        locks_provider: if config.locks_enabled {
+            Some(Arc::new(MockLocksProvider))
+        } else {
+            None
+        },
         file_storage_proxy: if config.proxy_enabled {
             Some(Arc::new(MockProxy {
                 get_success: config.proxy_get_success,

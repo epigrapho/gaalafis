@@ -13,7 +13,7 @@ pub struct CreateLockPayload {
     pub ref_: Option<Ref>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 pub struct ListLocksQuery {
     pub repo: String,
     pub path: Option<String>,
@@ -23,7 +23,7 @@ pub struct ListLocksQuery {
     pub refspec: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 pub struct ListLocksForVerificationPayload {
     pub cursor: Option<String>,
     pub limit: Option<String>,
@@ -31,7 +31,7 @@ pub struct ListLocksForVerificationPayload {
     pub ref_: Option<Ref>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 pub struct DeleteLockPayload {
     pub force: Option<bool>,
     pub ref_: Option<Ref>,
