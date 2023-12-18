@@ -1,19 +1,30 @@
-use crate::api::jwt::RepoTokenPayload;
-use crate::api::locks::body::{
-    CreateLockPayload, DeleteLockPayload, ListLocksForVerificationPayload, ListLocksQuery,
+use crate::{
+    api::{
+        jwt::RepoTokenPayload,
+        locks::{
+            body::{
+                CreateLockPayload, DeleteLockPayload, ListLocksForVerificationPayload,
+                ListLocksQuery,
+            },
+            response::{
+                CreateLockResponse, DeleteLockResponse, ListLocksForVerificationResponse,
+                ListLocksResponse, Lock,
+            },
+        },
+        repo_query::QueryRepo,
+    },
+    services::jwt::Jwt,
+    traits::{
+        self,
+        locks::{LocksProvider, LocksProviderError},
+        services::Services,
+    },
 };
-use crate::api::locks::response::{
-    CreateLockResponse, DeleteLockResponse, ListLocksForVerificationResponse, ListLocksResponse,
-    Lock,
+use axum::{
+    extract::{Path, Query, State},
+    http::{HeaderMap, StatusCode},
+    Json,
 };
-use crate::api::repo_query::QueryRepo;
-use crate::services::jwt::Jwt;
-use crate::traits;
-use crate::traits::locks::{LocksProvider, LocksProviderError};
-use crate::traits::services::Services;
-use axum::extract::{Path, Query, State};
-use axum::http::{HeaderMap, StatusCode};
-use axum::Json;
 use std::sync::Arc;
 
 fn verify_lock_jwt(
@@ -45,6 +56,46 @@ fn get_locks_provider<'a>(
         StatusCode::NOT_IMPLEMENTED,
         String::from("The lock api is not implemented on this server"),
     ))
+}
+
+async fn list_locks_helper(
+    headers: HeaderMap,
+    services: &State<Arc<dyn Services + Send + Sync + 'static>>,
+    repo: &str,
+    path: Option<&str>,
+    id: Option<&str>,
+    (limit, cursor): (Option<&str>, Option<&str>),
+    _ref_name: Option<&str>, // Specification prohibit the use of ref name to filter
+) -> Result<(String, Option<String>, Vec<traits::locks::Lock>), (StatusCode, String)> {
+    // 1) Preparation
+    let user = verify_lock_jwt(repo, headers, services, false)?;
+    let locks_provider = get_locks_provider(services)?;
+
+    // 2) Handle limit
+    let safe_limit = match limit.map(|q| q.parse::<u64>()) {
+        None => None,
+        Some(Err(_)) => return Err((StatusCode::BAD_REQUEST, "InvalidLimit".to_string())),
+        Some(Ok(limit)) => Some(limit),
+    };
+
+    // 2) List the locks
+    locks_provider
+        .list_locks(
+            repo,
+            path.filter(|s| !s.is_empty()),
+            id.filter(|s| !s.is_empty()),
+            cursor.filter(|s| !s.is_empty()),
+            safe_limit,
+            None,
+        )
+        .await
+        .map(|(next_cursor, locks)| (user, next_cursor, locks))
+        .map_err(|err| match err {
+            LocksProviderError::InvalidId => (StatusCode::BAD_REQUEST, err.to_string()),
+            LocksProviderError::InvalidCursor => (StatusCode::BAD_REQUEST, err.to_string()),
+            LocksProviderError::InvalidLimit => (StatusCode::BAD_REQUEST, err.to_string()),
+            _ => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),
+        })
 }
 
 pub async fn post_lock(
@@ -79,34 +130,6 @@ pub async fn post_lock(
             )),
         ))
     }
-}
-
-async fn list_locks_helper(
-    headers: HeaderMap,
-    services: &State<Arc<dyn Services + Send + Sync + 'static>>,
-    repo: &str,
-    path: Option<&str>,
-    id: Option<&str>,
-    (limit, cursor): (Option<&str>, Option<&str>),
-    _ref_name: Option<&str>, // Specification prohibit the use of ref name to filter
-) -> Result<(String, Option<String>, Vec<traits::locks::Lock>), (StatusCode, String)> {
-    // 1) Preparation
-    let user = verify_lock_jwt(repo, headers, services, false)?;
-    let locks_provider = get_locks_provider(services)?;
-
-    // 2) List the locks
-    locks_provider
-        .list_locks(
-            repo,
-            path.filter(|s| !s.is_empty()),
-            id.filter(|s| !s.is_empty()),
-            cursor.filter(|s| !s.is_empty()),
-            limit.map(|q| q.parse::<u64>().unwrap_or(100)),
-            None,
-        )
-        .await
-        .map(|(next_cursor, locks)| (user, next_cursor, locks))
-        .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))
 }
 
 pub async fn list_locks(
@@ -195,4 +218,571 @@ pub async fn unlock(
     // 3) Return the deleted lock
     let lock = Lock::new(lock.id, lock.path, lock.locked_at, lock.owner.name);
     Ok(Json(DeleteLockResponse::new(lock)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{list_locks, list_locks_for_verification, post_lock, unlock, verify_lock_jwt};
+    use crate::{
+        api::{
+            enums::Operation,
+            locks::body::{
+                CreateLockPayload, DeleteLockPayload, ListLocksForVerificationPayload,
+                ListLocksQuery,
+            },
+            repo_query::QueryRepo,
+        },
+        services::injected_services::InjectedServices,
+        test_utils::{
+            helpers::{assert_http_error, test_auth_headers},
+            mocks::{get_mock, DecodedTokenMock, MockConfig},
+        },
+    };
+    use axum::{
+        extract::{Json, Path, Query, State},
+        http::{HeaderMap, StatusCode},
+    };
+    use std::sync::Arc;
+
+    /**
+     * Test that every controller handle errors from the verify_lock_jwt function
+     * In this module we focus on the "Authorization header not found"
+     */
+    mod test_missing_header {
+        use super::*;
+
+        type FnToBeTested<T> = Box<
+            dyn Fn(&str, HeaderMap, Arc<InjectedServices>, bool) -> Result<T, (StatusCode, String)>,
+        >;
+
+        fn test_missing_header<T>(to_be_tested: FnToBeTested<T>) {
+            let services = get_mock(MockConfig::default());
+            assert_http_error(
+                to_be_tested("a/b/c", HeaderMap::new(), Arc::new(services), false),
+                StatusCode::UNAUTHORIZED,
+                "Authorization header not found",
+            );
+        }
+
+        #[test]
+        fn test_missing_header_verify_lock_jwt() {
+            test_missing_header(Box::new(
+                |repo, headers, services, requires_write_access| {
+                    verify_lock_jwt(repo, headers, &State(services), requires_write_access)
+                },
+            ));
+        }
+
+        #[test]
+        fn test_missing_header_post_lock() {
+            test_missing_header(Box::new(|repo, headers, services, _| {
+                crate::aw!(post_lock(
+                    headers,
+                    Query(QueryRepo::new(repo.to_string())),
+                    State(services),
+                    Json(CreateLockPayload::new("path", Some("ref"))),
+                ))
+            }));
+        }
+
+        #[test]
+        fn test_missing_header_list_locks() {
+            test_missing_header(Box::new(|repo, headers, services, _| {
+                crate::aw!(list_locks(
+                    headers,
+                    Query(ListLocksQuery {
+                        repo: repo.to_string(),
+                        ..ListLocksQuery::default()
+                    }),
+                    State(services),
+                ))
+            }));
+        }
+
+        #[test]
+        fn test_missing_header_list_locks_for_verification() {
+            test_missing_header(Box::new(|repo, headers, services, _| {
+                crate::aw!(list_locks_for_verification(
+                    headers,
+                    Query(QueryRepo::new(repo.to_string())),
+                    State(services),
+                    Json(ListLocksForVerificationPayload::default())
+                ))
+            }));
+        }
+
+        #[test]
+        fn test_missing_header_unlock() {
+            test_missing_header(Box::new(|repo, headers, services, _| {
+                crate::aw!(unlock(
+                    headers,
+                    Query(QueryRepo::new(repo.to_string())),
+                    State(services),
+                    Path("id".to_string()),
+                    Json(DeleteLockPayload::default())
+                ))
+            }));
+        }
+    }
+
+    /**
+     * Test that every type of bad token is handled by verify_lock_jwt
+     */
+    mod test_verify_lock_jwt {
+        use super::*;
+
+        #[test]
+        fn test_verify_loc_jwt_bad_header() {
+            let services = get_mock(MockConfig::default());
+            assert_http_error(
+                verify_lock_jwt(
+                    "a/b/c",
+                    test_auth_headers("token"),
+                    &State(Arc::new(services)),
+                    false,
+                ),
+                StatusCode::UNAUTHORIZED,
+                "Failed to parse Authorization header",
+            );
+        }
+
+        #[test]
+        fn test_verify_loc_jwt_token_expired() {
+            let services = get_mock(MockConfig {
+                expired: true,
+                ..MockConfig::default()
+            });
+            assert_http_error(
+                verify_lock_jwt(
+                    "a/b/c",
+                    test_auth_headers("Bearer token"),
+                    &State(Arc::new(services)),
+                    false,
+                ),
+                StatusCode::UNAUTHORIZED,
+                "Token expired",
+            );
+        }
+
+        #[test]
+        fn test_verify_loc_jwt_token_missing_write_authorization() {
+            let services = get_mock(MockConfig {
+                ..MockConfig::default()
+            });
+
+            assert_http_error(
+                verify_lock_jwt(
+                    "a/b/c",
+                    test_auth_headers("Bearer token"),
+                    &State(Arc::new(services)),
+                    true,
+                ),
+                StatusCode::UNAUTHORIZED,
+                "Unauthorized",
+            );
+        }
+
+        #[test]
+        fn test_verify_loc_jwt_token_wrong_repo() {
+            let services = get_mock(MockConfig {
+                ..MockConfig::default()
+            });
+
+            assert_http_error(
+                verify_lock_jwt(
+                    "another",
+                    test_auth_headers("Bearer token"),
+                    &State(Arc::new(services)),
+                    false,
+                ),
+                StatusCode::UNAUTHORIZED,
+                "Unauthorized",
+            );
+        }
+    }
+
+    /**
+     * Test that every controller handle correctly missing locks provider
+     */
+    mod test_missing_locks_provider {
+        use super::*;
+
+        fn get_prepared_download_services() -> Arc<InjectedServices> {
+            Arc::new(get_mock(MockConfig::default()))
+        }
+        fn get_prepared_upload_services() -> Arc<InjectedServices> {
+            Arc::new(get_mock(MockConfig {
+                decoded: Some(DecodedTokenMock {
+                    operation: Operation::Upload,
+                    repo: String::from("a/b/c"),
+                }),
+                ..MockConfig::default()
+            }))
+        }
+
+        fn expect_not_implemented<T>(res: Result<T, (StatusCode, String)>) {
+            assert_http_error(
+                res,
+                StatusCode::NOT_IMPLEMENTED,
+                "The lock api is not implemented on this server",
+            );
+        }
+
+        #[test]
+        fn test_missing_locks_provider_post_lock() {
+            expect_not_implemented(crate::aw!(post_lock(
+                test_auth_headers("Bearer token"),
+                Query(QueryRepo::new("a/b/c".to_string())),
+                State(get_prepared_upload_services()),
+                Json(CreateLockPayload::new("path", Some("ref"))),
+            )));
+        }
+
+        #[test]
+        fn test_missing_locks_provider_list_locks() {
+            expect_not_implemented(crate::aw!(list_locks(
+                test_auth_headers("Bearer token"),
+                Query(ListLocksQuery {
+                    repo: "a/b/c".to_string(),
+                    ..ListLocksQuery::default()
+                }),
+                State(get_prepared_download_services()),
+            )));
+        }
+
+        #[test]
+        fn test_missing_locks_provider_list_locks_for_verification() {
+            expect_not_implemented(crate::aw!(list_locks_for_verification(
+                test_auth_headers("Bearer token"),
+                Query(QueryRepo::new("a/b/c".to_string())),
+                State(get_prepared_download_services()),
+                Json(ListLocksForVerificationPayload::default())
+            )));
+        }
+
+        #[test]
+        fn test_missing_locks_provider_unlock() {
+            expect_not_implemented(crate::aw!(unlock(
+                test_auth_headers("Bearer token"),
+                Query(QueryRepo::new("a/b/c".to_string())),
+                State(get_prepared_upload_services()),
+                Path("id".to_string()),
+                Json(DeleteLockPayload::default())
+            )));
+        }
+    }
+
+    /**
+     * Test the post_lock controller
+     */
+    mod test_post_lock {
+        use super::*;
+        use crate::api::locks::response::CreateLockResponse;
+
+        fn run_post_lock(path: &str) -> (StatusCode, Json<CreateLockResponse>) {
+            let services = get_mock(MockConfig {
+                decoded: Some(DecodedTokenMock {
+                    operation: Operation::Upload,
+                    repo: String::from("a/b/c"),
+                }),
+                locks_enabled: true,
+                ..MockConfig::default()
+            });
+            crate::aw!(post_lock(
+                test_auth_headers("Bearer token"),
+                Query(QueryRepo::new("a/b/c".to_string())),
+                State(Arc::new(services)),
+                Json(CreateLockPayload::new(path, Some("ref"))),
+            ))
+            .unwrap()
+        }
+
+        #[test]
+        fn test_post_lock_new() {
+            let (status, Json(res)) = run_post_lock("path");
+            assert_eq!(status, StatusCode::CREATED);
+            assert_eq!(
+                serde_json::to_string(&res).unwrap(),
+                "{\"lock\":{\"id\":\"id\",\"path\":\"path\",\"locked_at\":\"1970-01-01T00:00:00+00:00\",\"owner\":{\"name\":\"user\"}}}"
+            );
+        }
+
+        #[test]
+        fn test_post_lock_already_exists() {
+            let (status, Json(res)) = run_post_lock("existing");
+            assert_eq!(status, StatusCode::CONFLICT);
+            assert_eq!(
+                serde_json::to_string(&res).unwrap(),
+                "{\"lock\":{\"id\":\"id\",\"path\":\"existing\",\"locked_at\":\"1970-01-01T00:00:00+00:00\",\"owner\":{\"name\":\"user\"}},\"message\":\"already created lock\"}"
+            );
+        }
+    }
+
+    /**
+     * Test the list_locks controller
+     */
+    mod test_list_locks {
+        use super::*;
+        use crate::api::locks::response::ListLocksResponse;
+
+        fn run_list_locks(
+            path: Option<&str>,
+            id: Option<&str>,
+            limit: Option<&str>,
+            cursor: Option<&str>,
+            refspec: Option<&str>,
+        ) -> Result<Json<ListLocksResponse>, (StatusCode, String)> {
+            let services = get_mock(MockConfig {
+                decoded: Some(DecodedTokenMock {
+                    operation: Operation::Download,
+                    repo: String::from("a/b/c"),
+                }),
+                locks_enabled: true,
+                ..MockConfig::default()
+            });
+            crate::aw!(list_locks(
+                test_auth_headers("Bearer token"),
+                Query(ListLocksQuery {
+                    repo: "a/b/c".to_string(),
+                    path: path.map(|s| s.to_string()),
+                    id: id.map(|s| s.to_string()),
+                    limit: limit.map(|s| s.to_string()),
+                    cursor: cursor.map(|s| s.to_string()),
+                    refspec: refspec.map(|s| s.to_string()),
+                }),
+                State(Arc::new(services)),
+            ))
+        }
+
+        #[test]
+        fn test_list_locks_invalid_id() {
+            assert_http_error(
+                run_list_locks(None, Some("invalid-id"), None, None, None),
+                StatusCode::BAD_REQUEST,
+                "InvalidId",
+            );
+        }
+
+        #[test]
+        fn test_list_locks_invalid_cursor() {
+            assert_http_error(
+                run_list_locks(None, None, None, Some("invalid-cursor"), None),
+                StatusCode::BAD_REQUEST,
+                "InvalidCursor",
+            );
+        }
+
+        #[test]
+        fn test_list_locks_unparseable_limit() {
+            assert_http_error(
+                run_list_locks(None, None, Some("invalid-limit"), None, None),
+                StatusCode::BAD_REQUEST,
+                "InvalidLimit",
+            );
+        }
+
+        #[test]
+        fn test_list_locks_invalid_limit() {
+            assert_http_error(
+                run_list_locks(None, None, Some("42"), None, None),
+                StatusCode::BAD_REQUEST,
+                "InvalidLimit",
+            );
+        }
+
+        #[test]
+        fn test_list_locks_limit0_of_3() {
+            let Json(res) = run_list_locks(None, None, Some("0"), None, None).unwrap();
+            assert_eq!(serde_json::to_string(&res).unwrap(), "{\"locks\":[]}");
+        }
+
+        #[test]
+        fn test_list_locks_limit2_of_3() {
+            let Json(res) = run_list_locks(None, None, Some("2"), None, None).unwrap();
+            assert_eq!(serde_json::to_string(&res).unwrap(), "{\"locks\":[{\"id\":\"id1\",\"path\":\"path1\",\"locked_at\":\"1970-01-01T00:00:00+00:00\",\"owner\":{\"name\":\"user\"}},{\"id\":\"id2\",\"path\":\"path2\",\"locked_at\":\"1970-01-01T00:00:00+00:00\",\"owner\":{\"name\":\"user\"}}],\"next_cursor\":\"id3\"}");
+        }
+
+        #[test]
+        fn test_list_locks_limit4_of_3() {
+            let Json(res) = run_list_locks(None, None, Some("4"), None, None).unwrap();
+            assert_eq!(serde_json::to_string(&res).unwrap(), "{\"locks\":[{\"id\":\"id1\",\"path\":\"path1\",\"locked_at\":\"1970-01-01T00:00:00+00:00\",\"owner\":{\"name\":\"user\"}},{\"id\":\"id2\",\"path\":\"path2\",\"locked_at\":\"1970-01-01T00:00:00+00:00\",\"owner\":{\"name\":\"user\"}},{\"id\":\"id3\",\"path\":\"path3\",\"locked_at\":\"1970-01-01T00:00:00+00:00\",\"owner\":{\"name\":\"user3\"}},{\"id\":\"id4\",\"path\":\"path4\",\"locked_at\":\"1970-01-01T00:00:00+00:00\",\"owner\":{\"name\":\"user4\"}}]}");
+        }
+
+        #[test]
+        fn test_list_locks_limit10_of_3() {
+            let Json(res) = run_list_locks(None, None, Some("10"), None, None).unwrap();
+            assert_eq!(serde_json::to_string(&res).unwrap(), "{\"locks\":[{\"id\":\"id1\",\"path\":\"path1\",\"locked_at\":\"1970-01-01T00:00:00+00:00\",\"owner\":{\"name\":\"user\"}},{\"id\":\"id2\",\"path\":\"path2\",\"locked_at\":\"1970-01-01T00:00:00+00:00\",\"owner\":{\"name\":\"user\"}},{\"id\":\"id3\",\"path\":\"path3\",\"locked_at\":\"1970-01-01T00:00:00+00:00\",\"owner\":{\"name\":\"user3\"}},{\"id\":\"id4\",\"path\":\"path4\",\"locked_at\":\"1970-01-01T00:00:00+00:00\",\"owner\":{\"name\":\"user4\"}}]}");
+        }
+
+        #[test]
+        fn test_list_locks() {
+            let Json(res) = run_list_locks(None, None, None, None, None).unwrap();
+            assert_eq!(serde_json::to_string(&res).unwrap(), "{\"locks\":[{\"id\":\"id1\",\"path\":\"path1\",\"locked_at\":\"1970-01-01T00:00:00+00:00\",\"owner\":{\"name\":\"user\"}},{\"id\":\"id2\",\"path\":\"path2\",\"locked_at\":\"1970-01-01T00:00:00+00:00\",\"owner\":{\"name\":\"user\"}},{\"id\":\"id3\",\"path\":\"path3\",\"locked_at\":\"1970-01-01T00:00:00+00:00\",\"owner\":{\"name\":\"user3\"}}],\"next_cursor\":\"id4\"}");
+        }
+    }
+
+    /**
+     * Test the list_locks_for_verification controller
+     */
+    mod test_list_locks_for_verification {
+        use super::*;
+        use crate::api::locks::response::ListLocksForVerificationResponse;
+
+        fn run_list_locks_for_verification(
+            limit: Option<&str>,
+            cursor: Option<&str>,
+        ) -> Result<Json<ListLocksForVerificationResponse>, (StatusCode, String)> {
+            let services = get_mock(MockConfig {
+                locks_enabled: true,
+                ..MockConfig::default()
+            });
+            crate::aw!(list_locks_for_verification(
+                test_auth_headers("Bearer token"),
+                Query(QueryRepo::new(String::from("a/b/c"))),
+                State(Arc::new(services)),
+                Json(ListLocksForVerificationPayload {
+                    limit: limit.map(|s| s.to_string()),
+                    cursor: cursor.map(|s| s.to_string()),
+                    ref_: None,
+                }),
+            ))
+        }
+
+        #[test]
+        fn test_list_locks_invalid_cursor() {
+            assert_http_error(
+                run_list_locks_for_verification(None, Some("invalid-cursor")),
+                StatusCode::BAD_REQUEST,
+                "InvalidCursor",
+            );
+        }
+
+        #[test]
+        fn test_list_locks_unparseable_limit() {
+            assert_http_error(
+                run_list_locks_for_verification(Some("invalid-limit"), None),
+                StatusCode::BAD_REQUEST,
+                "InvalidLimit",
+            );
+        }
+
+        #[test]
+        fn test_list_locks_invalid_limit() {
+            assert_http_error(
+                run_list_locks_for_verification(Some("42"), None),
+                StatusCode::BAD_REQUEST,
+                "InvalidLimit",
+            );
+        }
+
+        #[test]
+        fn test_list_locks_limit0_of_3() {
+            let Json(res) = run_list_locks_for_verification(Some("0"), None).unwrap();
+            assert_eq!(
+                serde_json::to_string(&res).unwrap(),
+                "{\"ours\":[],\"theirs\":[]}"
+            );
+        }
+
+        #[test]
+        fn test_list_locks_limit2_of_3() {
+            let Json(res) = run_list_locks_for_verification(Some("2"), None).unwrap();
+            assert_eq!(serde_json::to_string(&res).unwrap(), "{\"ours\":[{\"id\":\"id1\",\"path\":\"path1\",\"locked_at\":\"1970-01-01T00:00:00+00:00\",\"owner\":{\"name\":\"user\"}},{\"id\":\"id2\",\"path\":\"path2\",\"locked_at\":\"1970-01-01T00:00:00+00:00\",\"owner\":{\"name\":\"user\"}}],\"theirs\":[],\"next_cursor\":\"id3\"}");
+        }
+
+        #[test]
+        fn test_list_locks_limit4_of_3() {
+            let Json(res) = run_list_locks_for_verification(Some("4"), None).unwrap();
+            assert_eq!(serde_json::to_string(&res).unwrap(), "{\"ours\":[{\"id\":\"id1\",\"path\":\"path1\",\"locked_at\":\"1970-01-01T00:00:00+00:00\",\"owner\":{\"name\":\"user\"}},{\"id\":\"id2\",\"path\":\"path2\",\"locked_at\":\"1970-01-01T00:00:00+00:00\",\"owner\":{\"name\":\"user\"}}],\"theirs\":[{\"id\":\"id3\",\"path\":\"path3\",\"locked_at\":\"1970-01-01T00:00:00+00:00\",\"owner\":{\"name\":\"user3\"}},{\"id\":\"id4\",\"path\":\"path4\",\"locked_at\":\"1970-01-01T00:00:00+00:00\",\"owner\":{\"name\":\"user4\"}}]}");
+        }
+
+        #[test]
+        fn test_list_locks_limit10_of_3() {
+            let Json(res) = run_list_locks_for_verification(Some("10"), None).unwrap();
+            assert_eq!(serde_json::to_string(&res).unwrap(), "{\"ours\":[{\"id\":\"id1\",\"path\":\"path1\",\"locked_at\":\"1970-01-01T00:00:00+00:00\",\"owner\":{\"name\":\"user\"}},{\"id\":\"id2\",\"path\":\"path2\",\"locked_at\":\"1970-01-01T00:00:00+00:00\",\"owner\":{\"name\":\"user\"}}],\"theirs\":[{\"id\":\"id3\",\"path\":\"path3\",\"locked_at\":\"1970-01-01T00:00:00+00:00\",\"owner\":{\"name\":\"user3\"}},{\"id\":\"id4\",\"path\":\"path4\",\"locked_at\":\"1970-01-01T00:00:00+00:00\",\"owner\":{\"name\":\"user4\"}}]}");
+        }
+
+        #[test]
+        fn test_list_locks() {
+            let Json(res) = run_list_locks_for_verification(None, None).unwrap();
+            assert_eq!(serde_json::to_string(&res).unwrap(), "{\"ours\":[{\"id\":\"id1\",\"path\":\"path1\",\"locked_at\":\"1970-01-01T00:00:00+00:00\",\"owner\":{\"name\":\"user\"}},{\"id\":\"id2\",\"path\":\"path2\",\"locked_at\":\"1970-01-01T00:00:00+00:00\",\"owner\":{\"name\":\"user\"}}],\"theirs\":[{\"id\":\"id3\",\"path\":\"path3\",\"locked_at\":\"1970-01-01T00:00:00+00:00\",\"owner\":{\"name\":\"user3\"}}],\"next_cursor\":\"id4\"}");
+        }
+    }
+
+    /**
+     * Test the unlock controller
+     */
+    mod test_unlock {
+        use super::*;
+        use crate::api::locks::response::DeleteLockResponse;
+
+        fn run_unlock(
+            id: &str,
+            force: Option<bool>,
+        ) -> Result<Json<DeleteLockResponse>, (StatusCode, String)> {
+            let services = get_mock(MockConfig {
+                decoded: Some(DecodedTokenMock {
+                    operation: Operation::Upload,
+                    repo: String::from("a/b/c"),
+                }),
+                locks_enabled: true,
+                ..MockConfig::default()
+            });
+            crate::aw!(unlock(
+                test_auth_headers("Bearer token"),
+                Query(QueryRepo::new(String::from("a/b/c"))),
+                State(Arc::new(services)),
+                Path(id.to_string()),
+                Json(DeleteLockPayload { force, ref_: None }),
+            ))
+        }
+
+        #[test]
+        fn test_unlock() {
+            let Json(res) = run_unlock("id", None).unwrap();
+            assert_eq!(serde_json::to_string(&res).unwrap(), "{\"lock\":{\"id\":\"id\",\"path\":\"path\",\"locked_at\":\"1970-01-01T00:00:00+00:00\",\"owner\":{\"name\":\"user\"}}}");
+        }
+
+        #[test]
+        fn test_unlock_invalid_id() {
+            assert_http_error(
+                run_unlock("invalid-id", Some(false)),
+                StatusCode::BAD_REQUEST,
+                "InvalidId",
+            )
+        }
+
+        #[test]
+        fn test_unlock_missing_lock() {
+            assert_http_error(
+                run_unlock("not-found", Some(false)),
+                StatusCode::NOT_FOUND,
+                "LockNotFound",
+            )
+        }
+
+        #[test]
+        fn test_unlock_someones_else_lock() {
+            assert_http_error(
+                run_unlock("force-required", None),
+                StatusCode::FORBIDDEN,
+                "ForceDeleteRequired",
+            )
+        }
+
+        #[test]
+        fn test_unlock_someones_else_lock_explicit_dont_force() {
+            assert_http_error(
+                run_unlock("force-required", Some(false)),
+                StatusCode::FORBIDDEN,
+                "ForceDeleteRequired",
+            )
+        }
+
+        #[test]
+        fn test_force_unlock_someones_else_lock() {
+            let Json(res) = run_unlock("force-required", Some(true)).unwrap();
+            assert_eq!(serde_json::to_string(&res).unwrap(), "{\"lock\":{\"id\":\"force-required\",\"path\":\"path\",\"locked_at\":\"1970-01-01T00:00:00+00:00\",\"owner\":{\"name\":\"user\"}}}");
+        }
+    }
 }
