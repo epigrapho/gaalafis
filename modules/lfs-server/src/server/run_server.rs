@@ -1,18 +1,24 @@
-use crate::config::ServerConfig;
-use axum::body::HttpBody;
-use axum::routing::{get, post, put, MethodRouter};
-use axum::{middleware, Router};
-use lfs_info_server::{
+use crate::{
     controllers::{
         errors::handle_and_filter_error_details,
         locks::{list_locks, list_locks_for_verification, post_lock, unlock},
         objects::{batch::post_objects_batch, download::download_object, upload::upload_object},
     },
+    server::config::ServerConfig,
     traits::services::Services,
 };
-use std::net::SocketAddr;
+use axum::{
+    body::HttpBody,
+    middleware,
+    routing::{get, post, put, MethodRouter},
+    Router,
+};
 use std::sync::Arc;
 
+/**
+ * Extension trait to allow for adding both `/path` and `/path/` routes at the same time with
+ * the same handler.
+ */
 pub trait RouterExt<S, B>
 where
     B: HttpBody + Send + 'static,
@@ -21,6 +27,10 @@ where
     fn directory_route(self, path: &str, method_router: MethodRouter<S, B>) -> Self;
 }
 
+/**
+ * Implementation of the extension trait to allow for adding both `/path` and `/path/` routes
+ * at the same time with the same handler..
+ */
 impl<S, B> RouterExt<S, B> for Router<S, B>
 where
     B: HttpBody + Send + 'static,
@@ -32,7 +42,13 @@ where
     }
 }
 
-pub async fn run_server(config: ServerConfig, services: Arc<dyn Services + Send + Sync + 'static>) {
+/**
+ * Run the server with the given configuration and services implementation.
+ */
+pub fn run_server(
+    config: &ServerConfig,
+    services: Arc<dyn Services + Send + Sync + 'static>,
+) -> Router<()> {
     // initialize tracing
     tracing_subscriber::fmt::init();
 
@@ -74,16 +90,6 @@ pub async fn run_server(config: ServerConfig, services: Arc<dyn Services + Send 
     };
 
     // Error handling and services injection
-    let app = app
-        .layer(middleware::from_fn(handle_and_filter_error_details))
-        .with_state(services);
-
-    // run our app with hyper
-    // `axum::Server` is a re-export of `hyper::Server`
-    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
-    tracing::debug!("listening on {}", addr);
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
+    app.layer(middleware::from_fn(handle_and_filter_error_details))
+        .with_state(services)
 }
