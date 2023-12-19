@@ -1,10 +1,10 @@
 use crate::{
-    common::{init_test_bucket, rewrite_url, ClientHelper},
+    common::{app_utils::ClientHelper, init_test_bucket, rewrite_url},
     scenario::batch_objects_nominal::batch_objects_nominal_proxy,
 };
 
-mod common;
-mod scenario;
+pub mod common;
+pub mod scenario;
 
 /**
  * Integration test for the nominal case
