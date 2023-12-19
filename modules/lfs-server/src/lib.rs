@@ -40,6 +40,12 @@ pub mod services {
     pub mod jwt_token_encoder_decoder;
 }
 
+pub mod server {
+    pub mod config;
+    pub mod injected_services;
+    pub mod run_server;
+}
+
 pub mod traits {
     pub mod file_storage;
     pub mod locks;
@@ -48,7 +54,7 @@ pub mod traits {
 }
 
 #[cfg(test)]
-mod test_utils {
+pub mod test_utils {
     pub mod helpers;
     pub mod mocks;
 }

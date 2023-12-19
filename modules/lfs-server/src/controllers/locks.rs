@@ -58,6 +58,10 @@ fn get_locks_provider<'a>(
     ))
 }
 
+fn discard_empty(s: Option<&str>) -> Option<&str> {
+    s.filter(|s| !s.is_empty())
+}
+
 async fn list_locks_helper(
     headers: HeaderMap,
     services: &State<Arc<dyn Services + Send + Sync + 'static>>,
@@ -72,9 +76,12 @@ async fn list_locks_helper(
     let locks_provider = get_locks_provider(services)?;
 
     // 2) Handle limit
-    let safe_limit = match limit.map(|q| q.parse::<u64>()) {
+    let safe_limit = match discard_empty(limit).map(|q| q.parse::<u64>()) {
         None => None,
-        Some(Err(_)) => return Err((StatusCode::BAD_REQUEST, "InvalidLimit".to_string())),
+        Some(Err(_)) => {
+            tracing::error!("Invalid limit: {}", limit.unwrap_or("None"));
+            return Err((StatusCode::BAD_REQUEST, "InvalidLimit".to_string()));
+        }
         Some(Ok(limit)) => Some(limit),
     };
 
@@ -82,9 +89,9 @@ async fn list_locks_helper(
     locks_provider
         .list_locks(
             repo,
-            path.filter(|s| !s.is_empty()),
-            id.filter(|s| !s.is_empty()),
-            cursor.filter(|s| !s.is_empty()),
+            discard_empty(path),
+            discard_empty(id),
+            discard_empty(cursor),
             safe_limit,
             None,
         )

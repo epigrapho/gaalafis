@@ -1,5 +1,5 @@
-use crate::config::{FileStorageImplementation, ServerConfig};
-use lfs_info_server::{
+use crate::{
+    server::config::{FileStorageImplementation, LocksImplementation, ServerConfig},
     services::{
         custom_link_signer::CustomLinkSigner, fs::local_file_storage::LocalFileStorage,
         injected_services::InjectedServices, jwt_token_encoder_decoder::JwtTokenEncoderDecoder,
@@ -19,6 +19,9 @@ struct FileBackendServices(
     Arc<dyn FileStorageLinkSigner + 'static>,
 );
 
+/**
+ * Get the CustomLinkSigner implementation from the given configuration.
+ */
 fn get_custom_signer_implementation(
     config: &ServerConfig,
 ) -> Arc<dyn FileStorageLinkSigner + 'static> {
@@ -28,6 +31,15 @@ fn get_custom_signer_implementation(
     ))
 }
 
+/**
+ * Get the single bucket storage implementation from the given configuration.
+ * Get in order the FileStorageMetaRequester, the FileStorageProxy, FileStorageLinkSigner implementations
+ *
+ * In proxy mode, FileStorageMetaRequester and FileStorageProxy are both a reference to an instance of MinioSingleBucketStorage
+ *      and the signer is a CustomLinkSigner
+ * In signer mode, FileStorageMetaRequester and FileStorageLinkSigner are both a reference to an instance of MinioSingleBucketStorage
+ *      and the proxy is unset (not a proxy)
+ */
 fn get_sbs_implementation(config: &ServerConfig) -> FileBackendServices {
     let fs = Arc::new(MinioSingleBucketStorage::from_config(
         config.get_minio_single_bucket_storage_config(),
@@ -41,6 +53,9 @@ fn get_sbs_implementation(config: &ServerConfig) -> FileBackendServices {
     }
 }
 
+/**
+ * Get the file storage implementation from the given configuration.
+ */
 fn get_fs_implementation(config: &ServerConfig) -> FileBackendServices {
     let fs = Arc::new(LocalFileStorage::from_config(
         config.get_local_file_storage_config(),
@@ -49,7 +64,11 @@ fn get_fs_implementation(config: &ServerConfig) -> FileBackendServices {
     FileBackendServices(fs.clone(), Some(fs), custom_signer)
 }
 
-pub fn new_server_config(config: &ServerConfig) -> InjectedServices {
+/**
+ * Create the services from the given configuration. Might panic when some environment variables
+ * are missing.
+ */
+pub fn from_server_config(config: &ServerConfig) -> InjectedServices {
     // Token encoder decoder (only jwt for now)
     let token_encoder_decoder = Arc::new(JwtTokenEncoderDecoder::from_config(
         config.get_jwt_token_encoder_decoder_config(),
@@ -67,10 +86,10 @@ pub fn new_server_config(config: &ServerConfig) -> InjectedServices {
 
     // Get the locks provider implementation
     let locks_provider: Option<Arc<dyn LocksProvider>> = match config.locks_implementation {
-        crate::config::LocksImplementation::PostgresLocksProvider => Some(Arc::new(
+        LocksImplementation::PostgresLocksProvider => Some(Arc::new(
             PostgresLocksProvider::from_config(config.get_postgres_locks_provider_config()),
         )),
-        crate::config::LocksImplementation::None => None,
+        LocksImplementation::None => None,
     };
 
     // Bundle everything into a struct
