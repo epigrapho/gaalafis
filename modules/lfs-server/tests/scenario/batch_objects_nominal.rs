@@ -1,25 +1,11 @@
-mod common;
-
+use crate::assert_match;
 use crate::common::ClientHelper;
 use axum::http::StatusCode;
 use serde_json::Value;
 
-/**
-* Rewrite url as the nginx proxy would typically do in a production architecture
-*/
-fn rewrite(url: &str, repo: &str, custom_signer_host: &str) -> String {
-    let host = format!("{}/{}", custom_signer_host, repo);
-    format!("{}?repo={}", &url.replace(&host, ""), repo)
-}
+type UrlRewrite = dyn Fn(&str, &str) -> String;
 
-/**
- * Itegration test for the nominal case
- */
-#[tokio::test]
-async fn test_batch() {
-    let (mut app, config) = ClientHelper::new(vec!["proxy", "fs"]);
-    let custom_signer_host = &config.custom_signer_host.unwrap();
-
+pub async fn batch_objects_nominal_proxy(mut app: ClientHelper, url_rewrite: Box<UrlRewrite>) {
     // 1) Try to download a non existent file
     let (status, json) = app
         .post_json(
@@ -60,11 +46,7 @@ async fn test_batch() {
     let res: Value = serde_json::from_str(&json.unwrap()).unwrap();
     let action = &res["objects"][0]["actions"]["upload"];
     let auth = action["header"]["Authorization"].as_str().unwrap();
-    let href = rewrite(
-        action["href"].as_str().unwrap(),
-        "testing",
-        custom_signer_host,
-    );
+    let href = url_rewrite(action["href"].as_str().unwrap(), "testing");
 
     // 5) Upload the file
     let data = b"test of some data from integration test".to_vec();
@@ -89,11 +71,7 @@ async fn test_batch() {
     // 7) reparse the actions
     let res: Value = serde_json::from_str(&json.unwrap()).unwrap();
     let action = &res["objects"][0]["actions"]["download"];
-    let href = rewrite(
-        action["href"].as_str().unwrap(),
-        "testing",
-        custom_signer_host,
-    );
+    let href = url_rewrite(action["href"].as_str().unwrap(), "testing");
     let auth = action["header"]["Authorization"].as_str().unwrap();
 
     // 8) Download the content of the file

@@ -52,12 +52,6 @@ pub fn run_server(
     // initialize tracing
     tracing_subscriber::fmt::init();
 
-    // Create services
-    // let s: TServices = TServices::default();
-
-    // Bundle services
-    // let services: Arc<dyn Services + Send + Sync + 'static> = Arc::new(s);
-
     // build our application with a route
     let app = Router::new();
 
