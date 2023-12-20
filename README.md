@@ -1,6 +1,6 @@
 # GAALAFIS (Git Authenticated and Authorized LArge FIle Storage) [WIP]
 
-![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/Leonils/gaalafis/unit-tests-on-main.yml?label=tests)
+![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/Leonils/gaalafis/tests-on-main.yml?label=tests)
 [![codecov](https://codecov.io/gh/Leonils/gaalafis/graph/badge.svg?token=YCGN2KLRLB)](https://codecov.io/gh/Leonils/gaalafis)
 ![GitHub License](https://img.shields.io/github/license/LeoNils/gaalafis)
 ![GitHub tag (with filter)](https://img.shields.io/github/v/tag/Leonils/gaalafis)

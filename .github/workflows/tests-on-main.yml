@@ -1,4 +1,4 @@
-name: Unit Tests (Main)
+name: Unit & Integration Tests (Main)
 
 on:
   push:
