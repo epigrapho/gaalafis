@@ -33,7 +33,7 @@ fn get_default_server_env(args: Vec<&str>) -> (String, String, ServerConfig) {
         custom_signer_host: Some(String::from("https://example.com")),
         custom_signer_secret: Some(String::from("secret")),
         custom_signer_expires_in: Some(3600),
-        database_host: Some(String::from("http://localhost:5432")),
+        database_host: Some(String::from("localhost")),
         database_name: Some(db_id.clone()),
         database_user: Some(String::from("postgres")),
         database_password: Some(String::from("1")),
@@ -92,15 +92,16 @@ impl ClientHelper {
         (status, bytes, content_type)
     }
 
-    pub async fn post_json(
+    pub async fn send_json(
         &mut self,
+        method: Method,
         uri: &str,
         auth_header_value: &str,
         json_body: &str,
     ) -> (StatusCode, Option<String>) {
         let (status, body, _) = self
             .send(
-                Method::POST,
+                method,
                 uri,
                 auth_header_value,
                 "application/json",
@@ -109,6 +110,25 @@ impl ClientHelper {
             .await;
 
         (status, body.map(|b| String::from_utf8(b).unwrap()))
+    }
+
+    pub async fn post_json(
+        &mut self,
+        uri: &str,
+        auth_header_value: &str,
+        json_body: &str,
+    ) -> (StatusCode, Option<String>) {
+        self.send_json(Method::POST, uri, auth_header_value, json_body)
+            .await
+    }
+
+    pub async fn get_json(
+        &mut self,
+        uri: &str,
+        auth_header_value: &str,
+    ) -> (StatusCode, Option<String>) {
+        self.send_json(Method::GET, uri, auth_header_value, "")
+            .await
     }
 
     pub async fn put_data(
@@ -151,5 +171,24 @@ impl ClientHelper {
             body.map(|b| String::from_utf8(b).unwrap()),
             content_type,
         )
+    }
+
+    pub async fn lock(
+        &mut self,
+        repo: &str,
+        path: &str,
+        ref_name: &str,
+        auth: &str,
+    ) -> (StatusCode, Option<String>) {
+        self.send_json(
+            Method::POST,
+            &format!("/locks?repo={}", repo),
+            auth,
+            &format!(
+                "{{\"path\":\"{}\",\"ref\":{{\"name\":\"{}\"}}}}",
+                path, ref_name
+            ),
+        )
+        .await
     }
 }

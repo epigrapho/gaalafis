@@ -50,19 +50,21 @@ pub fn run_server(
     services: Arc<dyn Services + Send + Sync + 'static>,
 ) -> Router<()> {
     // initialize tracing
-    tracing_subscriber::fmt::init();
+    let _ = tracing_subscriber::fmt::try_init();
 
     // build our application with a route
     let app = Router::new();
 
     // Objects module
     //   - `POST /objects/batch?repo=a/b/c`
+    tracing::info!("Objects module enabled");
     let app = app.directory_route("/objects/batch", post(post_objects_batch));
 
     // Proxy module
     //   - `PUT /objects/access/<oid>?repo=a/b/c`
     //   - `GET /objects/access/<oid>?repo=a/b/c`
     let app = if config.with_proxy {
+        tracing::info!("Proxy module enabled");
         app.directory_route("/objects/access/:oid", put(upload_object))
             .directory_route("/objects/access/:oid", get(download_object))
     } else {
@@ -75,6 +77,7 @@ pub fn run_server(
     //   - `POST /locks/:id/unlock?repo=abc`
     //   - `POST /locks/verify?repo=abc`
     let app = if config.with_locks {
+        tracing::info!("Locks module enabled");
         app.directory_route("/locks", post(post_lock))
             .directory_route("/locks", get(list_locks))
             .directory_route("/locks/:id/unlock", post(unlock))

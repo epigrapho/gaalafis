@@ -33,6 +33,8 @@ impl PostgresLocksProvider {
         cfg.manager = Some(ManagerConfig {
             recycling_method: RecyclingMethod::Fast,
         });
+
+        tracing::info!("Creating pool to postgres database {:?}", &cfg.dbname);
         let pool = cfg.create_pool(Some(Runtime::Tokio1), NoTls).unwrap();
 
         Self { pool }
