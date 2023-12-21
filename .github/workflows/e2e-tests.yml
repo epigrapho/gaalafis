@@ -15,7 +15,6 @@ jobs:
 
     - name: Run
       run: |
-        echo "Running tests"
         cd tests
+        ./make_secrets.sh
         ./build_and_test.sh
-        echo "Tests passed"
