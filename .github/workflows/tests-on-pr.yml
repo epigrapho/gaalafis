@@ -75,3 +75,16 @@ jobs:
       run: |
         cd modules/lfs-server
         cargo test --test '*'
+
+  e2e-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Run
+      run: |
+        cd tests
+        ./make_secrets.sh
+        ./build_and_test.sh
