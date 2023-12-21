@@ -24,7 +24,7 @@ href=$(echo "$stdout_var" | jq -r '.objects[0].actions.download.href')
 # Download the file and verify that it is the same
 run_with_header_capturing_outputs "curl '$href' -v --insecure"
 expect_stdout_to_contain 'Test of upload.'
-expect_stderr_to_contain 'HTTP/1.1 200 OK'
+expect_stderr_to_contain 'HTTP/1.1 404 OK'
 expect_stderr_to_contain 'Host: proxy'
 expect_stderr_to_contain 'Content-Length: 15'
 expect_stderr_to_contain 'Content-Type: text/plain'
