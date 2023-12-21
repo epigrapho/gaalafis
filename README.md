@@ -31,7 +31,4 @@ A reference architecture to serve git and git-lfs repositories with per-reposito
 
 - A quick guide to get started and deploy GAALAFIS in minutes using docker-compose is available in the [user guide](documentation/user-guide/user-guide.md)
 - An advanced guide to customize your own version of the architecture is available in the [customization guide](documentation/user-guide/customization-guide.md)
-
-## Modelisation
-
-As a work done during my last year at CentralSupélec, I focused on applying system modeling technics to this project. Modelisations are available as a latex project in `documentation/design`, and the pdf is available as a release.
+- For the developers details about modelisation of the system are available in the [design documentation](documentation/design/README.md)
