@@ -37,12 +37,16 @@ end_scan=$(date +%s)
 results=()
 started_at=()
 ended_at=()
+exit_code=0
 cd ".." || exit 1
 for num in "${sorted_numbers[@]}"; do
   started_at+=("$(date +%s)")
   ./start.sh "$num"
   results+=("$?")
   ended_at+=("$(date +%s)")
+  if [[ "${results[-1]}" -ne 0 ]]; then
+    exit_code=1
+  fi
 done
 end_tests=$(date +%s)
 
@@ -73,3 +77,5 @@ echo "│                                                                       
 echo -e "│    $(pad_right "Tests took $((${end_tests}-${start_build}))s" 45)                            │ "
 echo "│                                                                              │"
 echo "└──────────────────────────────────────────────────────────────────────────────┘"
+
+exit $exit_code
