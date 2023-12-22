@@ -9,11 +9,11 @@ pub async fn batch_object_proxy_exit_directory_attack(
     url_rewrite: Box<UrlRewrite>,
 ) {
     // 1) Upload a first file "test2.txt" to repo "testing"
-    let auth = "Bearer eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiIxNzAzMjU2MzU4Iiwib2lkIjoidGVzdDIudHh0Iiwib3BlcmF0aW9uIjoidXBsb2FkIiwicmVwbyI6InRlc3RpbmcifQ.C8LBg-1Xcg2fmky65J78WW1crC9uW9I74sCc0hgHNls";
+    let auth = "Bearer eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiI1MDAwMDAwMDAwMDAwIiwib2lkIjoidGVzdDIudHh0Iiwib3BlcmF0aW9uIjoidXBsb2FkIiwicmVwbyI6InRlc3RpbmcifQ.tQcY2kU9XqL5sACoEaVM7j3B1HoYg44vqR1eWHAL_oU";
     app_upload_object(&mut app, "/objects/access/test2.txt?repo=testing", auth).await;
 
     // 2) Upload a second file "secret.txt" to repo "secret"
-    let auth = "Bearer eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiIxNzAzMjU2MzU4Iiwib2lkIjoic2VjcmV0LnR4dCIsIm9wZXJhdGlvbiI6InVwbG9hZCIsInJlcG8iOiJzZWNyZXQifQ.ZEt0o05XBY3Ug0Lgo4tkOGvfbkDubNeD973ouzbpcao";
+    let auth = "Bearer eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiI1MDAwMDAwMDAwMDAwIiwib2lkIjoic2VjcmV0LnR4dCIsIm9wZXJhdGlvbiI6InVwbG9hZCIsInJlcG8iOiJzZWNyZXQifQ.JzsocNgP4nPTsHsQbS5lTUXNmMmkK8jArd9pWoCBBe4";
     app_upload_object(&mut app, "/objects/access/secret.txt?repo=secret", auth).await;
 
     // 3) Try to batch download the secret file
