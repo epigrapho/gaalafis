@@ -1,8 +1,7 @@
 use crate::common::app_utils::ClientHelper;
 use crate::common::http_utils::fetch_url;
 use crate::{assert_match, assert_response_eq};
-use axum::body::Bytes;
-use axum::http::StatusCode;
+use axum::{body::Bytes, http::StatusCode};
 use http::Method;
 use serde_json::Value;
 
@@ -16,7 +15,7 @@ pub async fn batch_download_missing(app: &mut ClientHelper) {
             "{\"operation\":\"download\",\"transfers\":[\"basic\"],\"refs\":{\"name\":\"test\"},\"objects\":[{\"oid\":\"test2.txt\",\"size\":123}],\"hash_algo\":\"sha256\"}",
         )
         .await;
-    assert_eq!(status, axum::http::StatusCode::OK);
+    assert_eq!(status, StatusCode::OK);
     assert_eq!(json.unwrap(), "{\"transfer\":\"basic\",\"objects\":[{\"oid\":\"test2.txt\",\"size\":123,\"error\":{\"message\":\"Not found\"}}],\"hash_algo\":\"sha256\"}");
 }
 
@@ -28,7 +27,7 @@ pub async fn batch_upload_wrong_token(app: &mut ClientHelper) {
             "{\"operation\":\"upload\",\"transfers\":[\"basic\"],\"refs\":{\"name\":\"test\"},\"objects\":[{\"oid\":\"test2.txt\",\"size\":123}],\"hash_algo\":\"sha256\"}",
         )
         .await;
-    assert_eq!(status, axum::http::StatusCode::FORBIDDEN);
+    assert_eq!(status, StatusCode::FORBIDDEN);
     assert_eq!(json.unwrap(), "{\"message\":\"Forbidden\"}");
 }
 
@@ -40,7 +39,7 @@ pub async fn batch_download(app: &mut ClientHelper, pattern: &str) -> String {
             "{\"operation\":\"download\",\"transfers\":[\"basic\"],\"refs\":{\"name\":\"test\"},\"objects\":[{\"oid\":\"test2.txt\",\"size\":123}],\"hash_algo\":\"sha256\"}",
         )
         .await;
-    assert_eq!(status, axum::http::StatusCode::OK);
+    assert_eq!(status, StatusCode::OK);
     assert_match!(json.as_ref().unwrap(), pattern);
     json.unwrap()
 }
@@ -53,7 +52,7 @@ pub async fn batch_upload(app: &mut ClientHelper, pattern: &str) -> String {
             "{\"operation\":\"upload\",\"transfers\":[\"basic\"],\"refs\":{\"name\":\"test\"},\"objects\":[{\"oid\":\"test2.txt\",\"size\":123}],\"hash_algo\":\"sha256\"}",
         )
         .await;
-    assert_eq!(status, axum::http::StatusCode::OK);
+    assert_eq!(status, StatusCode::OK);
     assert_match!(json.as_ref().unwrap(), pattern);
     json.unwrap()
 }
@@ -61,7 +60,7 @@ pub async fn batch_upload(app: &mut ClientHelper, pattern: &str) -> String {
 pub async fn app_upload_object(app: &mut ClientHelper, href: &str, auth: &str) {
     let data = b"test of some data from integration test".to_vec();
     let (status, json) = app.put_data(href, auth, "custom/my-mime-type", data).await;
-    assert_eq!(status, axum::http::StatusCode::OK);
+    assert_eq!(status, StatusCode::OK);
     assert_eq!(json, None);
 }
 
@@ -80,9 +79,28 @@ pub async fn http_upload_object(href: &str) {
     assert_eq!(content_type, None);
 }
 
+pub async fn http_full_upload(app: &mut ClientHelper, repo: &str, oid: &str, token: &str) {
+    let before = "{\"operation\":\"upload\",\"transfers\":[\"basic\"],\"refs\":{\"name\":\"test\"},\"objects\":[{\"oid\":\"";
+    let after = "\",\"size\":123}],\"hash_algo\":\"sha256\"}";
+
+    let (status, json) = app
+        .post_json(
+            &format!("/objects/batch?repo={}", repo),
+            &format!("Bearer {}", token),
+            &format!("{}{}{}", before, oid, after),
+        )
+        .await;
+
+    assert_eq!(status, StatusCode::OK);
+    let json = json.unwrap();
+    let href = extract_href(&json, "upload");
+
+    http_upload_object(&href).await;
+}
+
 pub async fn app_download_object(app: &mut ClientHelper, href: &str, auth: &str) {
     let (status, data, content_type) = app.get_data(href, auth).await;
-    assert_eq!(status, axum::http::StatusCode::OK);
+    assert_eq!(status, StatusCode::OK);
     assert_eq!(data.unwrap(), "test of some data from integration test");
     assert_eq!(content_type, Some("custom/my-mime-type".to_string()));
 }
@@ -115,12 +133,12 @@ pub async fn assert_batch_download_secret_file_fail(app: &mut ClientHelper) {
         .post_json(
             "/objects/batch?repo=testing",
             "Bearer eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiI1MDAwMDAwMDAwMDAwIiwib3BlcmF0aW9uIjoiZG93bmxvYWQiLCJyZXBvIjoidGVzdGluZyIsInVzZXIiOiJhZG1pbi10ZXN0ZXIifQ.rNfKZOwgCVN-EQj7BA1ef3q2_D-aVM2nofbEdlxPShU",
-            "{\"operation\":\"download\",\"transfers\":[\"basic\"],\"refs\":{\"name\":\"test\"},\"objects\":[{\"oid\":\"../../../secret/my_secret.txt\",\"size\":123}],\"hash_algo\":\"sha256\"}",
+            "{\"operation\":\"download\",\"transfers\":[\"basic\"],\"refs\":{\"name\":\"test\"},\"objects\":[{\"oid\":\"../../secret/objects/secret.txt\",\"size\":123}],\"hash_algo\":\"sha256\"}",
         );
     assert_response_eq!(
         res,
         StatusCode::OK,
-        "{\"transfer\":\"basic\",\"objects\":[{\"oid\":\"../../../secret/my_secret.txt\",\"size\":123,\"error\":{\"message\":\"Not found\"}}],\"hash_algo\":\"sha256\"}"
+        "{\"transfer\":\"basic\",\"objects\":[{\"oid\":\"../../secret/objects/secret.txt\",\"size\":123,\"error\":{\"message\":\"Not found\"}}],\"hash_algo\":\"sha256\"}"
     );
 }
 
@@ -131,10 +149,10 @@ pub async fn assert_download_secret_file_fail(
     let (status, data, _) = app
         .get_data(
             &url_rewrite(
-                "https://example.com/testing/objects/access/../../../secret/my_secret.txt",
+                "https://example.com/testing/objects/access/../../secret/objects/secret.txt",
                 "testing",
             ),
-            "eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiIxNzAzMjQ4NTM3Iiwib2lkIjoiLi4vLi4vLi4vc2VjcmV0L215X3NlY3JldC50eHQiLCJvcGVyYXRpb24iOiJkb3dubG9hZCIsInJlcG8iOiJ0ZXN0aW5nIn0.ff_245iF21DAtsEirWMx1Gg7-4ConCQp0ckS7APWK9k",
+            "eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiIxNzAzMjQ4NTM3Iiwib2lkIjoiLi4vLi4vc2VjcmV0L29iamVjdHMvc2VjcmV0LnR4dCIsIm9wZXJhdGlvbiI6ImRvd25sb2FkIiwicmVwbyI6InRlc3RpbmcifQ.9B3VgY1D5MKZ0HC1AMzOLw8qzjZv9ld9DdPzl2hgJwk",
         )
         .await;
     assert_eq!(status, StatusCode::NOT_FOUND);

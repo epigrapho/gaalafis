@@ -52,7 +52,8 @@ pub async fn upload_object(
         ))?
         .post(&query.repo, oid.as_str(), body.to_vec(), content_type)
         .await
-        .map_err(|_| {
+        .map_err(|e| {
+            tracing::error!("Upload error: {:?}", e);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 String::from("Upload error"),

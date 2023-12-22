@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 
 use axum::http::HeaderMap;
+use regex::Regex;
 use s3::{creds::Credentials, Bucket, Region};
 
 use crate::{
@@ -84,9 +85,15 @@ impl MinioSingleBucketStorage {
 #[async_trait]
 impl FileStorageMetaRequester for MinioSingleBucketStorage {
     async fn get_meta_result<'a>(&self, repo: &'a str, oid: &'a str) -> FileStorageMetaResult<'a> {
+        if !Regex::new(r"^([a-z0-9\-_]*)\.([a-z0-9\-_]*)$")
+            .unwrap()
+            .is_match(oid)
+        {
+            return FileStorageMetaResult::not_found(repo, oid);
+        }
+
         let s3_path = self.get_object_path(repo, oid);
         let meta = self.bucket_direct_access.head_object(s3_path).await;
-
         let size = meta
             .map(|m| {
                 m.0.content_length
