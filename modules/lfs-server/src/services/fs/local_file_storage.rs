@@ -42,7 +42,7 @@ impl LocalFileStorage {
 #[async_trait]
 impl FileStorageMetaRequester for LocalFileStorage {
     async fn get_meta_result<'a>(&self, repo: &'a str, oid: &'a str) -> FileStorageMetaResult<'a> {
-        if !Regex::new(r"^([a-z0-9\-_]*)\.([a-z0-9\-_]*)$")
+        if !Regex::new(r"^([a-z0-9\-_]*)\.?([a-z0-9\-_]*)$")
             .unwrap()
             .is_match(oid)
         {
