@@ -1,3 +1,4 @@
+use crate::scenario::batch_object_exit_directory_attack::batch_object_proxy_exit_directory_attack;
 use crate::{
     common::{app_utils::ClientHelper, init_test_database, rewrite_url},
     scenario::{batch_objects_nominal::batch_objects_nominal_proxy, locks_nominal::locks_nominal},
@@ -28,4 +29,18 @@ async fn test_locks_nominal() {
     let (app, config) = ClientHelper::new(vec!["proxy", "fs", "locks", "pg"]);
     init_test_database(&config.database_name.unwrap()).await;
     locks_nominal(app).await;
+}
+
+/**
+ * Integration test for an attack attempting to download objects outside of objects directory
+ */
+#[tokio::test]
+async fn test_batch_object_exit_directory_attack() {
+    let (app, config) = ClientHelper::new(vec!["proxy", "fs", "locks", "pg"]);
+    let custom_signer_host = config.custom_signer_host.unwrap();
+    batch_object_proxy_exit_directory_attack(
+        app,
+        Box::new(move |url, repo| rewrite_url(url, repo, &custom_signer_host)),
+    )
+    .await;
 }
