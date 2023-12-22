@@ -4,6 +4,7 @@ use s3::{Bucket, BucketConfiguration, Region};
 use tokio_postgres::NoTls;
 
 pub mod app_utils;
+pub mod batch_objects;
 pub mod http_utils;
 
 #[macro_export]

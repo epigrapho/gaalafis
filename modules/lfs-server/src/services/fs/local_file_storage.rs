@@ -2,6 +2,7 @@ use crate::traits::file_storage::{
     FileStorageMetaRequester, FileStorageMetaResult, FileStorageProxy,
 };
 use async_trait::async_trait;
+use regex::Regex;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 pub struct LocalFileStorageConfig {
@@ -41,8 +42,16 @@ impl LocalFileStorage {
 #[async_trait]
 impl FileStorageMetaRequester for LocalFileStorage {
     async fn get_meta_result<'a>(&self, repo: &'a str, oid: &'a str) -> FileStorageMetaResult<'a> {
+        if !Regex::new(r"^([a-zA-Z0-9\-_]*)\.?([a-zA-Z0-9\-_]*)$")
+            .unwrap()
+            .is_match(oid)
+        {
+            return FileStorageMetaResult::not_found(repo, oid);
+        }
+
         let path = self.get_object_path(repo, oid);
         let meta = tokio::fs::metadata(path).await;
+
         let size = meta.map_or(None, |m| Some(m.len()));
         self.match_size(size, repo, oid)
     }

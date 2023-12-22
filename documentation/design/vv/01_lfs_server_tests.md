@@ -43,6 +43,15 @@ The nominal batch object scenario is the following:
 
 (It is implemented 2 times to simplify the verification of links in the proxy and signer variant, as the links are very different, but both test the same scenario)
 
+### Batch object exit directory attack
+
+This scenario study an attack from someone trying to access an object using relative path "../../.../secret" to find other files outside of his own repo. 
+
+1) Upload a first file so the repo directory exists
+2) Create a file in a secret location (outside of the repo directory)
+3) Try to batch download the secret file
+4) It shall have been refused by now, but if there were a token, the download itself should fail too
+
 ### Locks nominal
 
 The nominal locks scenario involves 2 users that create locks, list them, and delete them.
