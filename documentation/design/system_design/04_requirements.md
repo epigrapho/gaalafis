@@ -87,8 +87,8 @@ As a priority for the first implementation, the system will implement the MinIO 
 On the other side, locks have to be stored too. In the same way, the system must define interfaces, provide a few implementations, and model future ones: 
 
 - **R2.3.3**: The system shall define lock storage interfaces, to create, list, and delete locks.
-- **R2.3.4**: The system shall model implementations of the lock storage interfaces of **R2.3.3** for other storages: Locks in multiple buckets (LMB), Locks in local file storage.
-- **R2.2.3**: The system shall implement the lock storage interfaces of **R2.3.3** for the MinIO API, using a Single Bucket Storage policy (SBS)
+- **R2.3.4**: The system shall model implementations of the lock storage interfaces of **R2.3.3** for other storages: ~~Locks in multiple buckets (LMB)~~, ~~Locks in local file storage~~ (discarded, minio is not well suited for concurrency safety).
+- **R2.2.3**: ~~The system shall implement the lock storage interfaces of **R2.3.3** for the MinIO API, using a Single Bucket Storage policy (SBS)~~ (discarded, minio is not well suited for concurrency safety).
 - **R2.2.4**: The system shall implement the lock storage interfaces of **R2.3.3** for postgresql database
 
 ## Software quality
