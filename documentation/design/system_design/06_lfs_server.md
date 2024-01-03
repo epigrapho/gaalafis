@@ -1,4 +1,3 @@
-\newpage
 # Git LFS Server
 
 As discussed, we need to implement a git lfs server that match our requirements. One of the most complex one is reusability and modularity with several storage backends.
