@@ -1,9 +1,9 @@
 # GAALAFIS (Git Authenticated and Authorized LArge FIle Storage) [WIP]
 
-![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/Leonils/gaalafis/tests-on-main.yml?label=tests)
-[![codecov](https://codecov.io/gh/Leonils/gaalafis/graph/badge.svg?token=YCGN2KLRLB)](https://codecov.io/gh/Leonils/gaalafis)
-![GitHub License](https://img.shields.io/github/license/LeoNils/gaalafis)
-![GitHub tag (with filter)](https://img.shields.io/github/v/tag/Leonils/gaalafis)
+![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/epigrapho/gaalafis/tests-on-main.yml?label=tests)
+[![codecov](https://codecov.io/gh/epigrapho/gaalafis/graph/badge.svg?token=YCGN2KLRLB)](https://codecov.io/gh/epigrapho/gaalafis)
+![GitHub License](https://img.shields.io/github/license/epigrapho/gaalafis)
+![GitHub tag (with filter)](https://img.shields.io/github/v/tag/epigrapho/gaalafis)
 
 A reference architecture to serve git and git-lfs repositories with per-repository access control.
 
@@ -20,12 +20,11 @@ A reference architecture to serve git and git-lfs repositories with per-reposito
 - [x] Locks storage
     - [x] Postgres locks storage
     - [ ] Redis locks storage
-    - [ ] Single S3 bucket locks storage
-    - [ ] Multi S3 buckets locks storage
     - [ ] Local filesystem locks storage
 - [x] Proxy/signer mode
 - [x] Deployment guides
 - [x] Customization guides
+- [ ] Usage quotas
 
 ## Guides
 
